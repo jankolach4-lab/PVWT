@@ -722,7 +722,7 @@ button:hover{transform:translateY(-1px)}
     const SUPABASE_URL = 'https://rossmvnscvsflvdlxxad.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ';
     const BATTERY_TABLE = 'battery_storage_models';
-    const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('https://rossmvnscvsflvdlxxad.supabase.co') && !SUPABASE_KEY.includes('sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ');
+    const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('HIER_DEINE_SUPABASE_URL_EINTRAGEN') && !SUPABASE_KEY.includes('HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN');
     const supabaseClient = hasSupabaseConfig && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
     let batteryCatalog = [];
     const defaultValues = {};
@@ -864,7 +864,8 @@ button:hover{transform:translateY(-1px)}
       });
     }
 
-    function updateAuthUI(user) {
+    async function updateAuthUI(user) {
+      const previousUserId = currentUser?.id || null;
       currentUser = user || null;
       const loggedOut = document.getElementById('auth_logged_out');
       const loggedIn = document.getElementById('auth_logged_in');
@@ -880,6 +881,18 @@ button:hover{transform:translateY(-1px)}
       if (body) body.classList.toggle('auth-locked', !currentUser);
 
       updateSaveButtonsState();
+
+      if (currentUser) {
+        if (currentUser.id !== previousUserId || batteryCatalog.length === 0) {
+          await loadBatteryCatalog();
+        }
+      } else {
+        batteryCatalog = [];
+        fillBatteryDropdown('o1');
+        fillBatteryDropdown('o2');
+        setStorageStatus('o1', 'Bitte einloggen, um Speicherdaten zu laden.', '');
+        setStorageStatus('o2', 'Bitte einloggen, um Speicherdaten zu laden.', '');
+      }
     }
 
     async function loginWithPassword() {
@@ -933,29 +946,27 @@ button:hover{transform:translateY(-1px)}
 
     async function initAuth() {
       if (!supabaseClient) {
-        updateAuthUI(null);
+        await updateAuthUI(null);
         return;
       }
 
       const { data, error } = await supabaseClient.auth.getSession();
       if (error) {
         console.error('Fehler beim Prüfen der Session:', error);
-        updateAuthUI(null);
+        await updateAuthUI(null);
         setAuthStatus('Session konnte nicht geprüft werden.', 'error');
         return;
       }
 
-      updateAuthUI(data?.session?.user ?? null);
+      await updateAuthUI(data?.session?.user ?? null);
 
       supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        updateAuthUI(session?.user ?? null);
+        await updateAuthUI(session?.user ?? null);
         if (event === 'SIGNED_IN') {
           setAuthStatus('Erfolgreich eingeloggt.', 'success');
-          await loadBatteryCatalog();
         }
         if (event === 'SIGNED_OUT') {
           setAuthStatus('Abgemeldet.', 'success');
-          await loadBatteryCatalog();
         }
       });
     }
@@ -1538,7 +1549,6 @@ button:hover{transform:translateY(-1px)}
       await initAuth();
       syncCalculatedFields();
       calculate();
-      await loadBatteryCatalog();
     }
 
     document.addEventListener('DOMContentLoaded', initApp);
