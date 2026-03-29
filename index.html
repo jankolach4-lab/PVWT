@@ -355,6 +355,42 @@ button:hover{transform:translateY(-1px)}
   .comp-table-head,.comp-row{grid-template-columns:1fr}
 }
 
+.auth-locked #app_content{
+  position:relative;
+  pointer-events:none;
+  user-select:none;
+  opacity:.32;
+  filter:blur(3px) grayscale(.08);
+}
+.auth-lock-message{
+  display:none;
+  position:sticky;
+  top:16px;
+  z-index:20;
+  margin:0 0 18px 0;
+}
+.auth-locked .auth-lock-message{
+  display:flex;
+  justify-content:center;
+}
+.auth-lock-card{
+  max-width:520px;
+  width:100%;
+  padding:20px 22px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:var(--shadow);
+  text-align:center;
+}
+.auth-lock-card h2{
+  margin:0 0 8px;
+}
+.auth-lock-card p{
+  margin:0;
+  color:var(--muted);
+}
+
 @media print{
   body{background:#fff}
   .actions{display:none}
@@ -387,7 +423,7 @@ button:hover{transform:translateY(-1px)}
             <button type="button" onclick="loginWithPassword()">Einloggen</button>
           </div>
         </div>
-        <small style="display:block;margin-top:8px;color:var(--muted);">Nur eingeloggte Nutzer können neue Speicher dauerhaft speichern.</small>
+        <small style="display:block;margin-top:8px;color:var(--muted);">Ohne Login ist das Tool vollständig gesperrt.</small>
       </div>
       <div id="auth_logged_in" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -397,6 +433,14 @@ button:hover{transform:translateY(-1px)}
       </div>
       <div id="auth_status" style="margin-top:10px;font-size:14px;color:var(--muted);"></div>
     </div>
+
+    <div id="app_content" aria-hidden="true">
+      <div class="auth-lock-message" id="auth_lock_message">
+        <div class="auth-lock-card">
+          <h2>Login erforderlich</h2>
+          <p>Bitte logge dich ein, um das Tool zu nutzen.</p>
+        </div>
+      </div>
 
     <div class="grid">
       <div class="card">
@@ -675,8 +719,8 @@ button:hover{transform:translateY(-1px)}
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://rossmvnscvsflvdlxxad.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ';
+    const SUPABASE_URL = 'HIER_DEINE_SUPABASE_URL_EINTRAGEN';
+    const SUPABASE_KEY = 'HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN';
     const BATTERY_TABLE = 'battery_storage_models';
     const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('HIER_DEINE_SUPABASE_URL_EINTRAGEN') && !SUPABASE_KEY.includes('HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN');
     const supabaseClient = hasSupabaseConfig && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -825,10 +869,15 @@ button:hover{transform:translateY(-1px)}
       const loggedOut = document.getElementById('auth_logged_out');
       const loggedIn = document.getElementById('auth_logged_in');
       const emailEl = document.getElementById('auth_user_email');
+      const appContent = document.getElementById('app_content');
+      const body = document.body;
 
       if (loggedOut) loggedOut.style.display = currentUser ? 'none' : 'block';
       if (loggedIn) loggedIn.style.display = currentUser ? 'block' : 'none';
       if (emailEl) emailEl.textContent = currentUser?.email || '-';
+
+      if (appContent) appContent.setAttribute('aria-hidden', currentUser ? 'false' : 'true');
+      if (body) body.classList.toggle('auth-locked', !currentUser);
 
       updateSaveButtonsState();
     }
@@ -863,6 +912,8 @@ button:hover{transform:translateY(-1px)}
         return;
       }
 
+      const pwd = document.getElementById('auth_password');
+      if (pwd) pwd.value = '';
       setAuthStatus('Login erfolgreich.', 'success');
     }
 
@@ -896,10 +947,16 @@ button:hover{transform:translateY(-1px)}
 
       updateAuthUI(data?.session?.user ?? null);
 
-      supabaseClient.auth.onAuthStateChange((event, session) => {
+      supabaseClient.auth.onAuthStateChange(async (event, session) => {
         updateAuthUI(session?.user ?? null);
-        if (event === 'SIGNED_IN') setAuthStatus('Erfolgreich eingeloggt.', 'success');
-        if (event === 'SIGNED_OUT') setAuthStatus('Abgemeldet.', 'success');
+        if (event === 'SIGNED_IN') {
+          setAuthStatus('Erfolgreich eingeloggt.', 'success');
+          await loadBatteryCatalog();
+        }
+        if (event === 'SIGNED_OUT') {
+          setAuthStatus('Abgemeldet.', 'success');
+          await loadBatteryCatalog();
+        }
       });
     }
 
@@ -966,6 +1023,15 @@ button:hover{transform:translateY(-1px)}
       if (!supabaseClient) {
         setStorageStatus('o1', 'Supabase ist noch nicht konfiguriert. Trage URL und Publishable Key im Code ein.', 'error');
         setStorageStatus('o2', 'Supabase ist noch nicht konfiguriert. Trage URL und Publishable Key im Code ein.', 'error');
+        return;
+      }
+
+      if (!currentUser) {
+        batteryCatalog = [];
+        fillBatteryDropdown('o1');
+        fillBatteryDropdown('o2');
+        setStorageStatus('o1', 'Login erforderlich, um Speicherdaten zu laden.', 'error');
+        setStorageStatus('o2', 'Login erforderlich, um Speicherdaten zu laden.', 'error');
         return;
       }
 
@@ -1477,5 +1543,6 @@ button:hover{transform:translateY(-1px)}
 
     document.addEventListener('DOMContentLoaded', initApp);
   </script>
+    </div>
 </body>
 </html>
