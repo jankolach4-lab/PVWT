@@ -374,13 +374,17 @@ button:hover{transform:translateY(-1px)}
     <div class="card" id="auth_card">
       <div class="section-title-row"><h2>Benutzerzugang</h2><div class="section-kicker">Auth</div></div>
       <div id="auth_logged_out">
-        <div class="field" style="display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:10px;align-items:end;">
+        <div class="field" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,240px) auto;gap:10px;align-items:end;">
           <div>
             <label for="auth_email">E-Mail</label>
-            <input id="auth_email" type="email" placeholder="name@firma.de" />
+            <input id="auth_email" type="email" placeholder="name@firma.de" autocomplete="username" />
           </div>
           <div>
-            <button type="button" onclick="sendMagicLink()">Login-Link senden</button>
+            <label for="auth_password">Passwort</label>
+            <input id="auth_password" type="password" placeholder="Passwort" autocomplete="current-password" />
+          </div>
+          <div>
+            <button type="button" onclick="loginWithPassword()">Einloggen</button>
           </div>
         </div>
         <small style="display:block;margin-top:8px;color:var(--muted);">Nur eingeloggte Nutzer können neue Speicher dauerhaft speichern.</small>
@@ -671,8 +675,8 @@ button:hover{transform:translateY(-1px)}
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://rossmvnscvsflvdlxxad.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ';
+    const SUPABASE_URL = 'HIER_DEINE_SUPABASE_URL_EINTRAGEN';
+    const SUPABASE_KEY = 'HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN';
     const BATTERY_TABLE = 'battery_storage_models';
     const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('HIER_DEINE_SUPABASE_URL_EINTRAGEN') && !SUPABASE_KEY.includes('HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN');
     const supabaseClient = hasSupabaseConfig && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -829,34 +833,37 @@ button:hover{transform:translateY(-1px)}
       updateSaveButtonsState();
     }
 
-    async function sendMagicLink() {
+    async function loginWithPassword() {
       if (!supabaseClient) {
         setAuthStatus('Supabase ist nicht korrekt konfiguriert.', 'error');
         return;
       }
 
       const email = txt('auth_email').trim();
+      const password = txt('auth_password');
+
       if (!email) {
         setAuthStatus('Bitte eine E-Mail-Adresse eingeben.', 'error');
         return;
       }
 
-      const redirectTo = window.location.origin + window.location.pathname;
-      const { error } = await supabaseClient.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: redirectTo
-        }
-      });
-
-      if (error) {
-        console.error('Fehler beim Senden des Magic Links:', error);
-        setAuthStatus('Login-Link konnte nicht gesendet werden: ' + error.message, 'error');
+      if (!password) {
+        setAuthStatus('Bitte ein Passwort eingeben.', 'error');
         return;
       }
 
-      setAuthStatus('Login-Link wurde an ' + email + ' gesendet.', 'success');
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        console.error('Fehler beim Login:', error);
+        setAuthStatus('Login fehlgeschlagen: ' + error.message, 'error');
+        return;
+      }
+
+      setAuthStatus('Login erfolgreich.', 'success');
     }
 
     async function logoutUser() {
