@@ -540,10 +540,13 @@ button:hover{transform:translateY(-1px)}
                     </select>
                   </div>
                   <div id="o1_manual_mode" class="storage-mode-panel" style="display:none;">
-                    <small>Hier kannst du einen neuen Speicher manuell pflegen und direkt dauerhaft in Supabase speichern.</small>
-                    <div class="actions" style="margin-top:10px;">
+                    <small>Hier kannst du einen neuen Speicher anlegen oder einen bereits ausgewählten Speicher bearbeiten bzw. deaktivieren.</small>
+                    <div class="actions" style="margin-top:10px;flex-wrap:wrap;">
                       <button type="button" class="secondary save-battery-btn" onclick="saveBatteryFromOffer('o1')">Speicher speichern</button>
+                      <button type="button" class="secondary edit-battery-btn" id="o1_update_battery_btn" onclick="updateBatteryFromOffer('o1')" disabled>Ausgewählten Speicher aktualisieren</button>
+                      <button type="button" class="secondary deactivate-battery-btn" id="o1_deactivate_battery_btn" onclick="deactivateBatteryFromOffer('o1')" disabled>Ausgewählten Speicher deaktivieren</button>
                     </div>
+                    <small style="display:block;margin-top:8px;color:var(--muted);">Zum Bearbeiten oder Deaktivieren zuerst oben im Dropdown einen vorhandenen Speicher auswählen.</small>
                   </div>
                   <div id="o1_storage_status" class="storage-status"></div>
                 </div>
@@ -564,10 +567,13 @@ button:hover{transform:translateY(-1px)}
                     </select>
                   </div>
                   <div id="o2_manual_mode" class="storage-mode-panel" style="display:none;">
-                    <small>Hier kannst du einen neuen Speicher manuell pflegen und direkt dauerhaft in Supabase speichern.</small>
-                    <div class="actions" style="margin-top:10px;">
+                    <small>Hier kannst du einen neuen Speicher anlegen oder einen bereits ausgewählten Speicher bearbeiten bzw. deaktivieren.</small>
+                    <div class="actions" style="margin-top:10px;flex-wrap:wrap;">
                       <button type="button" class="secondary save-battery-btn" onclick="saveBatteryFromOffer('o2')">Speicher speichern</button>
+                      <button type="button" class="secondary edit-battery-btn" id="o2_update_battery_btn" onclick="updateBatteryFromOffer('o2')" disabled>Ausgewählten Speicher aktualisieren</button>
+                      <button type="button" class="secondary deactivate-battery-btn" id="o2_deactivate_battery_btn" onclick="deactivateBatteryFromOffer('o2')" disabled>Ausgewählten Speicher deaktivieren</button>
                     </div>
+                    <small style="display:block;margin-top:8px;color:var(--muted);">Zum Bearbeiten oder Deaktivieren zuerst oben im Dropdown einen vorhandenen Speicher auswählen.</small>
                   </div>
                   <div id="o2_storage_status" class="storage-status"></div>
                 </div>
@@ -983,7 +989,13 @@ button:hover{transform:translateY(-1px)}
       const manualPanel = document.getElementById(`${prefix}_manual_mode`);
       if (selectPanel) selectPanel.style.display = mode === 'select' ? 'block' : 'none';
       if (manualPanel) manualPanel.style.display = mode === 'manual' ? 'block' : 'none';
-      setStorageStatus(prefix, mode === 'manual' ? 'Manuelle Eingabe aktiv.' : '', '');
+      syncStorageActionButtons(prefix);
+      if (mode === 'manual') {
+        const selected = getBatteryById(getSelectedBatteryId(prefix));
+        setStorageStatus(prefix, selected ? `Bearbeitungsmodus aktiv für: ${selected.manufacturer} ${selected.model}` : 'Manuelle Eingabe aktiv.', '');
+      } else {
+        setStorageStatus(prefix, '', '');
+      }
     }
 
     function fillBatteryDropdown(prefix) {
@@ -1000,6 +1012,7 @@ button:hover{transform:translateY(-1px)}
       if (currentValue && [...select.options].some(opt => opt.value === currentValue)) {
         select.value = currentValue;
       }
+      syncStorageActionButtons(prefix);
     }
 
     function applyBatteryToOffer(prefix, batteryId) {
@@ -1026,6 +1039,7 @@ button:hover{transform:translateY(-1px)}
       });
 
       setStorageStatus(prefix, `Speicher geladen: ${item.manufacturer} ${item.model}`, 'success');
+      syncStorageActionButtons(prefix);
       syncCalculatedFields();
       calculate();
     }
@@ -1169,12 +1183,153 @@ button:hover{transform:translateY(-1px)}
       alert('Speicher wurde erfolgreich gespeichert.');
     }
 
+    async function updateBatteryFromOffer(prefix) {
+      if (!currentUser) {
+        const msg = 'Du musst eingeloggt sein, um einen Speicher zu bearbeiten.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      if (!supabaseClient) {
+        setStorageStatus(prefix, 'Supabase ist nicht konfiguriert. Bearbeiten ist daher nicht möglich.', 'error');
+        return;
+      }
+
+      const batteryId = getSelectedBatteryId(prefix);
+      if (!batteryId) {
+        const msg = 'Bitte zuerst einen vorhandenen Speicher im Dropdown auswählen.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      const selectedBattery = getBatteryById(batteryId);
+      if (!selectedBattery) {
+        const msg = 'Der ausgewählte Speicher wurde nicht gefunden. Lade die Liste bitte neu.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      const payload = getBatteryPayloadFromOffer(prefix);
+      const errors = validateBatteryPayload(payload);
+      if (errors.length) {
+        setStorageStatus(prefix, errors.join(' '), 'error');
+        alert(errors.join('\n'));
+        return;
+      }
+
+      const duplicate = batteryCatalog.find(item =>
+        item.id !== batteryId &&
+        String(item.manufacturer || '').trim().toLowerCase() === payload.manufacturer.toLowerCase() &&
+        String(item.model || '').trim().toLowerCase() === payload.model.toLowerCase()
+      );
+
+      if (duplicate) {
+        const msg = 'Hersteller + Modell existieren bereits bei einem anderen Speicher.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      const label = `${selectedBattery.manufacturer} ${selectedBattery.model}`;
+      const confirmation = confirm(`Soll der Speicher "${label}" wirklich mit den aktuell eingegebenen Werten aktualisiert werden?`);
+      if (!confirmation) return;
+
+      setStorageStatus(prefix, 'Speicher wird aktualisiert ...', '');
+
+      const { data, error } = await supabaseClient
+        .from(BATTERY_TABLE)
+        .update(payload)
+        .eq('id', batteryId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Fehler beim Aktualisieren des Speichers:', error);
+        const message = error.code === '23505'
+          ? 'Hersteller + Modell existieren bereits in der Datenbank.'
+          : 'Speicher konnte nicht aktualisiert werden: ' + error.message;
+        setStorageStatus(prefix, message, 'error');
+        alert(message);
+        return;
+      }
+
+      await loadBatteryCatalog();
+      const select = document.getElementById(`${prefix}_storage_select`);
+      if (select && data?.id) {
+        select.value = data.id;
+        applyBatteryToOffer(prefix, data.id);
+      }
+      setStorageMode(prefix, 'manual');
+      setStorageStatus(prefix, 'Speicher wurde aktualisiert.', 'success');
+      alert('Speicher wurde aktualisiert.');
+    }
+
+    async function deactivateBatteryFromOffer(prefix) {
+      if (!currentUser) {
+        const msg = 'Du musst eingeloggt sein, um einen Speicher zu deaktivieren.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      if (!supabaseClient) {
+        setStorageStatus(prefix, 'Supabase ist nicht konfiguriert. Deaktivieren ist daher nicht möglich.', 'error');
+        return;
+      }
+
+      const batteryId = getSelectedBatteryId(prefix);
+      if (!batteryId) {
+        const msg = 'Bitte zuerst einen vorhandenen Speicher im Dropdown auswählen.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      const selectedBattery = getBatteryById(batteryId);
+      if (!selectedBattery) {
+        const msg = 'Der ausgewählte Speicher wurde nicht gefunden. Lade die Liste bitte neu.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      const confirmation = confirm(`Soll der Speicher "${selectedBattery.manufacturer} ${selectedBattery.model}" wirklich deaktiviert werden? Er verschwindet danach aus den Dropdowns.`);
+      if (!confirmation) return;
+
+      setStorageStatus(prefix, 'Speicher wird deaktiviert ...', '');
+
+      const { error } = await supabaseClient
+        .from(BATTERY_TABLE)
+        .update({ is_active: false })
+        .eq('id', batteryId);
+
+      if (error) {
+        console.error('Fehler beim Deaktivieren des Speichers:', error);
+        const message = 'Speicher konnte nicht deaktiviert werden: ' + error.message;
+        setStorageStatus(prefix, message, 'error');
+        alert(message);
+        return;
+      }
+
+      const select = document.getElementById(`${prefix}_storage_select`);
+      if (select) select.value = '';
+      await loadBatteryCatalog();
+      syncStorageActionButtons(prefix);
+      setStorageStatus(prefix, 'Speicher wurde deaktiviert und aus der Auswahl entfernt.', 'success');
+      alert('Speicher wurde deaktiviert.');
+    }
+
+
     function bindBatterySelectors() {
       ['o1', 'o2'].forEach(prefix => {
         const select = document.getElementById(`${prefix}_storage_select`);
         if (!select || select.dataset.bound === '1') return;
         select.addEventListener('change', event => {
           const batteryId = event.target.value;
+          syncStorageActionButtons(prefix);
           if (!batteryId) {
             setStorageStatus(prefix, '', '');
             return;
