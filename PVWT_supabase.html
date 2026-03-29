@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PV-Wirtschaftlichkeitsberechnung</title>
+  <style>
+:root{
+  --bg:#edf2f8;
+  --bg-2:#e4ebf4;
+  --panel:#ffffff;
+  --panel-soft:#f8fbff;
+  --line:#d4dce7;
+  --text:#17212b;
+  --muted:#697586;
+  --accent:#0f4c81;
+  --accent2:#2c7be5;
+  --offer1:#1d4ed8;
+  --offer1-soft:#eaf2ff;
+  --offer2:#0f766e;
+  --offer2-soft:#e9fbf7;
+  --good:#1f9d55;
+  --bad:#d64545;
+  --shadow:0 10px 26px rgba(16,24,40,.08);
+  --shadow-soft:0 5px 14px rgba(16,24,40,.06);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(44,123,229,.10), transparent 28%),
+    radial-gradient(circle at top right, rgba(15,118,110,.08), transparent 20%),
+    linear-gradient(180deg,var(--bg),var(--bg-2));
+  color:var(--text);
+}
+
+.wrap{
+  max-width:1600px;
+  margin:auto;
+  padding:24px 28px 40px;
+}
+
+h1{
+  font-size:30px;
+  font-weight:750;
+  margin-bottom:18px;
+  letter-spacing:.2px;
+  color:#0f1720;
+}
+
+h2{
+  font-size:20px;
+  margin-bottom:14px;
+  font-weight:750;
+  color:#0f1720;
+}
+
+.grid{display:grid;grid-template-columns:1fr;gap:18px}
+
+.card{
+  background:linear-gradient(180deg,#fff,var(--panel-soft));
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:18px 20px;
+  box-shadow:var(--shadow);
+}
+
+.card h2{
+  border-left:4px solid var(--accent);
+  padding-left:10px;
+}
+
+.two-col{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+.field{display:flex;flex-direction:column;gap:5px}
+
+label{
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--muted);
+  font-weight:650;
+}
+
+input,select{
+  border:1px solid #cfd6df;
+  background:#fff;
+  padding:10px 11px;
+  font-size:14px;
+  border-radius:4px;
+  transition:.15s border,.15s box-shadow,.15s background;
+}
+
+input:hover,select:hover{background:#fcfdff}
+input:focus,select:focus{
+  border-color:var(--accent2);
+  outline:none;
+  box-shadow:0 0 0 3px rgba(44,123,229,.14);
+}
+
+.offer-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.offer{
+  border:1px solid var(--line);
+  padding:16px;
+  border-radius:8px;
+  background:#fbfdff;
+  box-shadow:var(--shadow-soft);
+}
+
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+
+.actions{display:flex;gap:10px;margin-top:12px}
+button{
+  border:none;
+  border-radius:4px;
+  padding:11px 16px;
+  font-size:14px;
+  font-weight:650;
+  cursor:pointer;
+  transition:.15s transform,.15s opacity,.15s background;
+}
+button:hover{transform:translateY(-1px)}
+.primary{background:linear-gradient(135deg,var(--accent),#125fa3);color:#fff}
+.primary:hover{background:linear-gradient(135deg,#0b3b64,#0f4c81)}
+.secondary{background:#edf2f7}
+
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.stat{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:18px;
+  background:#fff;
+  position:relative;
+  overflow:hidden;
+  box-shadow:var(--shadow-soft);
+}
+.stat::before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--accent2),var(--accent));
+}
+.stat .label{
+  font-size:12px;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:700;
+  margin-bottom:6px;
+}
+.stat .value{font-size:26px;font-weight:750}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+
+.winner-box{
+  margin-top:18px;
+  border-radius:8px;
+  padding:16px 18px;
+  font-weight:650;
+  color:#13314f;
+  background:linear-gradient(135deg,#eef5ff,#f8fbff);
+  border:1px solid #cfdff7;
+  box-shadow:var(--shadow-soft);
+}
+
+.detail-card{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:14px 16px;
+  background:#fff;
+  box-shadow:var(--shadow-soft);
+}
+.detail-head{font-weight:750;margin-bottom:10px}
+.detail-grid{display:grid;grid-template-columns:1fr 180px 180px 2fr;gap:10px;font-size:14px;align-items:start}
+.detail-label{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.detail-value{line-height:1.45}
+
+/* Offer-specific comparison styling */
+.detail-grid > div:nth-child(2),
+.detail-grid > div:nth-child(3){
+  padding:10px 12px;
+  border-radius:6px;
+  border:1px solid transparent;
+}
+.detail-grid > div:nth-child(2){
+  background:linear-gradient(180deg,var(--offer1-soft),#fff);
+  border-color:rgba(29,78,216,.18);
+}
+.detail-grid > div:nth-child(3){
+  background:linear-gradient(180deg,var(--offer2-soft),#fff);
+  border-color:rgba(15,118,110,.18);
+}
+.detail-grid > div:nth-child(2) .detail-label{color:var(--offer1)}
+.detail-grid > div:nth-child(3) .detail-label{color:var(--offer2)}
+
+.footer-note{
+  margin-top:18px;
+  font-size:13px;
+  color:#5f6772;
+  background:linear-gradient(180deg,#f8fbff,#f3f7fb);
+  border:1px solid var(--line);
+  padding:14px 16px;
+  border-radius:8px;
+}
+
+.chart-card{
+  margin-top:18px;
+  border:1px solid var(--line);
+  background:linear-gradient(180deg,#fff,#f7fbff);
+  padding:16px;
+  border-radius:8px;
+  box-shadow:var(--shadow-soft);
+}
+.chart-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.chart-chip{
+  padding:7px 11px;
+  border-radius:4px;
+  background:#eef4fb;
+  border:1px solid #d7e3f4;
+  font-size:12px;
+  font-weight:700;
+  color:#37506a;
+}
+.chart-shell{
+  background:linear-gradient(180deg,#fff,#f6faff);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:12px;
+}
+#breakevenSvg{width:100%;min-width:860px;height:360px;display:block}
+.chart-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:13px;font-weight:700;color:var(--muted)}
+.legend-item{display:inline-flex;align-items:center;gap:8px}
+.legend-swatch{width:28px;height:4px;border-radius:999px;display:inline-block}
+.legend-a{background:linear-gradient(90deg,var(--offer1),#60a5fa)}
+.legend-b{background:linear-gradient(90deg,var(--offer2),#34d399)}
+.legend-break{background:linear-gradient(90deg,#f59e0b,#f97316)}
+
+.comp-table-head{
+  display:grid;
+  grid-template-columns:1.4fr 1fr 1fr;
+  gap:10px;
+  align-items:center;
+  font-weight:750;
+  margin-bottom:10px;
+  padding:8px 10px;
+  background:linear-gradient(90deg,#f6f9fc,#edf4fb);
+  border:1px solid var(--line);
+  border-radius:6px;
+}
+.comp-table-head > div:nth-child(2){color:var(--offer1)}
+.comp-table-head > div:nth-child(3){color:var(--offer2)}
+.comp-row{
+  display:grid;
+  grid-template-columns:1.4fr 1fr 1fr;
+  gap:10px;
+  align-items:center;
+  padding:8px 0;
+  border-bottom:1px solid #edf2f7;
+}
+.comp-row:last-child{border-bottom:none}
+.comp-row input:nth-of-type(1){border-color:rgba(29,78,216,.24);background:linear-gradient(180deg,var(--offer1-soft),#fff)}
+.comp-row input:nth-of-type(2){border-color:rgba(15,118,110,.24);background:linear-gradient(180deg,var(--offer2-soft),#fff)}
+
+.best-val-1,.best-val-2{
+  position:relative;
+  font-weight:750;
+}
+.best-val-1::after,.best-val-2::after{
+  content:"Besser";
+  display:inline-block;
+  margin-left:8px;
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  vertical-align:middle;
+}
+.best-val-1::after{background:rgba(29,78,216,.10);color:var(--offer1)}
+.best-val-2::after{background:rgba(15,118,110,.10);color:var(--offer2)}
+
+
+.storage-source-box{
+  margin:10px 0 14px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:linear-gradient(180deg,#f8fbff,#ffffff);
+}
+.storage-source-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:10px;
+}
+.storage-source-title{
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--muted);
+  font-weight:750;
+}
+.storage-source-tabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.storage-mode-panel{margin-top:8px}
+.storage-mode-panel small{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.45;
+}
+.storage-status{
+  margin-top:10px;
+  font-size:12px;
+  color:#37506a;
+}
+.storage-status.error{color:var(--bad)}
+.storage-status.success{color:var(--good)}
+.hero{position:relative;overflow:hidden}
+.section-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--accent);
+  font-weight:800;
+  margin-bottom:8px;
+}
+.hero-subtitle{
+  color:var(--muted);
+  max-width:1100px;
+  line-height:1.55;
+  font-size:14px;
+}
+.section-title-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+}
+
+@media(max-width:1000px){
+  .offer-grid,.result-grid{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr 1fr}
+  .detail-grid{grid-template-columns:1fr 1fr}
+  .comp-table-head,.comp-row{grid-template-columns:1fr}
+}
+
+@media print{
+  body{background:#fff}
+  .actions{display:none}
+  .card,.chart-card{box-shadow:none}
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card hero">
+      <div class="section-kicker">Wirtschaftlichkeitsanalyse</div>
+      <h1>PV-Wirtschaftlichkeitsberechnung</h1>
+      <div class="hero-subtitle">Vergleiche zwei Angebote über den gewählten Betrachtungszeitraum inklusive Kaufpreis, Folgekosten, Speicher, PV-Degradation, Finanzierung und weiterer wirtschaftlicher Auswirkungen in einer klaren, hochwertigen Darstellung.</div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title-row"><h2>Grunddaten</h2><div class="section-kicker">Basis</div></div>
+        <div class="two-col">
+          <div class="field">
+            <label for="consumption">Stromverbrauch pro Jahr (kWh)</label>
+            <input id="consumption" type="number" step="0.01" value="8500" />
+          </div>
+          <div class="field">
+            <label for="years">Betrachtungszeitraum (Jahre)</label>
+            <input id="years" type="number" step="1" value="20" />
+          </div>
+          <div class="field">
+            <label for="priceEscalation">Angenommene Strompreissteigerung pro Jahr (%)</label>
+            <select id="priceEscalation">
+              <option value="0">0 %</option>
+              <option value="2">2 %</option>
+              <option value="4">4 %</option>
+              <option value="6">6 %</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="feedin_price">Einspeisevergütung / Direktvermarktung (€/kWh)</label>
+            <input id="feedin_price" type="number" step="0.0001" value="0.08" />
+          </div>
+        </div>
+        <div class="field-grid" style="margin-top:10px; grid-template-columns:1.4fr 1fr 1fr; align-items:center; gap:10px;">
+          <div style="font-size:13px; font-weight:800; color:var(--text);">Zusatznutzung / Profil</div>
+          <div style="font-size:13px; font-weight:800; color:var(--text);">Angebot 1</div>
+          <div style="font-size:13px; font-weight:800; color:var(--text);">Angebot 2</div>
+
+          <div style="font-size:13px; font-weight:700; color:var(--text);">Dynamischer Stromtarif</div>
+          <label style="display:flex; align-items:center; gap:10px;"><input id="o1_has_dynamic_tariff" type="checkbox" style="width:18px; min-height:auto; padding:0; box-shadow:none;" /> aktiv</label>
+          <label style="display:flex; align-items:center; gap:10px;"><input id="o2_has_dynamic_tariff" type="checkbox" style="width:18px; min-height:auto; padding:0; box-shadow:none;" /> aktiv</label>
+
+          <div style="font-size:13px; font-weight:700; color:var(--text);">Direktvermarktung</div>
+          <label style="display:flex; align-items:center; gap:10px;"><input id="o1_has_direct_marketing" type="checkbox" style="width:18px; min-height:auto; padding:0; box-shadow:none;" /> aktiv</label>
+          <label style="display:flex; align-items:center; gap:10px;"><input id="o2_has_direct_marketing" type="checkbox" style="width:18px; min-height:auto; padding:0; box-shadow:none;" /> aktiv</label>
+
+          <div style="font-size:13px; font-weight:700; color:var(--text);">Arbitrage / Netzladung</div>
+          <label style="display:flex; align-items:center; gap:10px;"><input id="o1_has_arbitrage" type="checkbox" style="width:18px; min-height:auto; padding:0; box-shadow:none;" /> aktiv</label>
+          <label style="display:flex; align-items:center; gap:10px;"><input id="o2_has_arbitrage" type="checkbox" style="width:18px; min-height:auto; padding:0; box-shadow:none;" /> aktiv</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title-row"><h2>Angebot 1 und Angebot 2</h2><div class="section-kicker">Vergleich</div></div>
+        <div class="offer-grid" style="grid-template-columns:1fr;">
+          <div class="offer">
+            <h3>Angebotsvergleich</h3>
+            <div class="comp-table-head">
+              <div>Parameter</div>
+              <div>Angebot 1</div>
+              <div>Angebot 2</div>
+            </div>
+
+            <div class="comp-row">
+              <label>Kaufpreis (€)</label>
+              <input id="o1_purchase" type="number" step="0.01" value="25000" />
+              <input id="o2_purchase" type="number" step="0.01" value="27000" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Strompreis (€/kWh)</label>
+              <input id="o1_price" type="number" step="0.0001" value="0.32" />
+              <input id="o2_price" type="number" step="0.0001" value="0.32" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>PV‑Produktion pro Jahr (kWh)</label>
+              <input id="o1_pv" type="number" step="0.01" value="12637" />
+              <input id="o2_pv" type="number" step="0.01" value="13200" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>PV‑Restleistung nach 30 Jahren (%)</label>
+              <input id="o1_pv_deg30" type="number" step="0.01" value="87.4" />
+              <input id="o2_pv_deg30" type="number" step="0.01" value="87.4" />
+            </div>
+
+            <div class="comp-row">
+              <label>Speicherquelle</label>
+              <div>
+                <div class="storage-source-box">
+                  <div class="storage-source-head">
+                    <div class="storage-source-title">Angebot 1</div>
+                    <div class="storage-source-tabs">
+                      <button type="button" class="secondary" onclick="setStorageMode('o1','select')">Speicher auswählen</button>
+                      <button type="button" class="secondary" onclick="setStorageMode('o1','manual')">Manuell eingeben</button>
+                    </div>
+                  </div>
+                  <div id="o1_select_mode" class="storage-mode-panel">
+                    <label for="o1_storage_select">Speicher auswählen</label>
+                    <select id="o1_storage_select">
+                      <option value="">Bitte auswählen</option>
+                    </select>
+                  </div>
+                  <div id="o1_manual_mode" class="storage-mode-panel" style="display:none;">
+                    <small>Hier kannst du einen neuen Speicher manuell pflegen und direkt dauerhaft in Supabase speichern.</small>
+                    <div class="actions" style="margin-top:10px;">
+                      <button type="button" class="secondary" onclick="saveBatteryFromOffer('o1')">Speicher speichern</button>
+                    </div>
+                  </div>
+                  <div id="o1_storage_status" class="storage-status"></div>
+                </div>
+              </div>
+              <div>
+                <div class="storage-source-box">
+                  <div class="storage-source-head">
+                    <div class="storage-source-title">Angebot 2</div>
+                    <div class="storage-source-tabs">
+                      <button type="button" class="secondary" onclick="setStorageMode('o2','select')">Speicher auswählen</button>
+                      <button type="button" class="secondary" onclick="setStorageMode('o2','manual')">Manuell eingeben</button>
+                    </div>
+                  </div>
+                  <div id="o2_select_mode" class="storage-mode-panel">
+                    <label for="o2_storage_select">Speicher auswählen</label>
+                    <select id="o2_storage_select">
+                      <option value="">Bitte auswählen</option>
+                    </select>
+                  </div>
+                  <div id="o2_manual_mode" class="storage-mode-panel" style="display:none;">
+                    <small>Hier kannst du einen neuen Speicher manuell pflegen und direkt dauerhaft in Supabase speichern.</small>
+                    <div class="actions" style="margin-top:10px;">
+                      <button type="button" class="secondary" onclick="saveBatteryFromOffer('o2')">Speicher speichern</button>
+                    </div>
+                  </div>
+                  <div id="o2_storage_status" class="storage-status"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Hersteller Speicher</label>
+              <input id="o1_storage_manufacturer" type="text" value="" />
+              <input id="o2_storage_manufacturer" type="text" value="" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Modell Speicher</label>
+              <input id="o1_storage_model" type="text" value="" />
+              <input id="o2_storage_model" type="text" value="" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Speicherkapazität (kWh)</label>
+              <input id="o1_batt_cap" type="number" step="0.01" value="10" />
+              <input id="o2_batt_cap" type="number" step="0.01" value="12" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Speicherpreis im Kaufpreis (€)</label>
+              <input id="o1_batt_price" type="number" step="0.01" value="8000" />
+              <input id="o2_batt_price" type="number" step="0.01" value="9000" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Direktverbrauchsquote ohne Speicher (%)</label>
+              <input id="o1_direct_use" type="number" step="0.01" value="25" />
+              <input id="o2_direct_use" type="number" step="0.01" value="25" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Ladezyklen pro Tag (automatisch, geschätzt)</label>
+              <input id="o1_cycles_day" type="number" step="0.01" value="1" readonly />
+              <input id="o2_cycles_day" type="number" step="0.01" value="1" readonly />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Ladezyklen pro Jahr (automatisch, geschätzt)</label>
+              <input id="o1_cycles_year" type="number" step="0.01" value="365" readonly />
+              <input id="o2_cycles_year" type="number" step="0.01" value="365" readonly />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Garantierte Vollzyklen</label>
+              <input id="o1_guarantee_cycles" type="number" step="1" value="6000" />
+              <input id="o2_guarantee_cycles" type="number" step="1" value="8000" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Garantierter Energiedurchsatz (kWh)</label>
+              <input id="o1_throughput" type="number" step="0.01" value="60000" />
+              <input id="o2_throughput" type="number" step="0.01" value="96000" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Kapazitätsgarantie nach 10 Jahren (%)</label>
+              <input id="o1_cap10" type="number" step="0.01" value="80" />
+              <input id="o2_cap10" type="number" step="0.01" value="84" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Be‑/Entladeleistung (kW)</label>
+              <input id="o1_charge_power" type="number" step="0.01" value="5" />
+              <input id="o2_charge_power" type="number" step="0.01" value="6" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Entsorgungskosten Speicher (€)</label>
+              <input id="o1_disposal" type="number" step="0.01" value="0" />
+              <input id="o2_disposal" type="number" step="0.01" value="0" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Wechselrichter-Ersatzkosten (€)</label>
+              <input id="o1_inv_replace_cost" type="number" step="0.01" value="0" />
+              <input id="o2_inv_replace_cost" type="number" step="0.01" value="0" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Wechselrichter-Ersatz im Jahr</label>
+              <input id="o1_inv_replace_year" type="number" step="1" value="0" />
+              <input id="o2_inv_replace_year" type="number" step="1" value="0" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Autarkiegrad (%)</label>
+              <input id="o1_autarky" type="number" step="0.01" value="70" />
+              <input id="o2_autarky" type="number" step="0.01" value="75" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Effektivzins Finanzierung (%)</label>
+              <input id="o1_fin_rate" type="number" step="0.01" value="0" />
+              <input id="o2_fin_rate" type="number" step="0.01" value="0" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Finanzierungslaufzeit (Jahre)</label>
+              <input id="o1_fin_years" type="number" step="1" value="20" />
+              <input id="o2_fin_years" type="number" step="1" value="20" />
+            </div>
+
+            <div class="field" style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:center">
+              <label>Bezeichnung Angebot</label>
+              <input id="o1_name" type="text" value="Angebot 1" />
+              <input id="o2_name" type="text" value="Angebot 2" />
+            </div>
+
+          </div>
+      <div class="actions">
+          <button class="primary" onclick="calculate()">Jetzt berechnen</button>
+          <button class="secondary" onclick="downloadPDF()">PDF erzeugen</button>
+          <button class="secondary" onclick="resetDefaults()">Standardwerte zurücksetzen</button>
+        </div>
+
+      <div class="card">
+        <div class="section-title-row"><h2>Ergebnis</h2><div class="section-kicker">Auswertung</div></div>
+        <div class="result-grid">
+          <div class="stat"><div class="label">20-Jahres-Kosten Angebot 1</div><div class="value" id="resultO1">-</div></div>
+          <div class="stat"><div class="label">20-Jahres-Kosten Angebot 2</div><div class="value" id="resultO2">-</div></div>
+          <div class="stat"><div class="label">Preisvorteil</div><div class="value" id="resultDiff">-</div></div>
+        </div>
+        <div id="winnerBox" class="winner-box" style="margin-top:16px;">Noch nicht berechnet.</div>
+        <div id="replacementHintBox" class="winner-box" style="margin-top:12px; display:none;"></div>
+
+        <div class="details-section">
+          <div id="detailTable" class="detail-cards"></div>
+          <div class="footer-note" id="footerNote"></div>
+          <div class="chart-card">
+            <div class="section-title-row"><h2>Kostenverlauf</h2><div class="section-kicker">Break-even</div></div>
+            <div class="chart-meta" id="chartMeta"></div>
+            <div class="chart-shell"><svg id="breakevenSvg" viewBox="0 0 1000 360" preserveAspectRatio="none"></svg></div>
+            <div class="chart-legend">
+              <div class="legend-item"><span class="legend-swatch legend-a"></span>Angebot 1 kumulierte Kosten</div>
+              <div class="legend-item"><span class="legend-swatch legend-b"></span>Angebot 2 kumulierte Kosten</div>
+              <div class="legend-item"><span class="legend-swatch legend-break"></span>Break-even-Marke</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://rossmvnscvsflvdlxxad.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ';
+    const BATTERY_TABLE = 'battery_storage_models';
+    const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('HIER_DEINE_SUPABASE_URL_EINTRAGEN') && !SUPABASE_KEY.includes('HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN');
+    const supabaseClient = hasSupabaseConfig && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    let batteryCatalog = [];
+    const defaultValues = {};
+
+    document.querySelectorAll('input, select').forEach(el => {
+      defaultValues[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+      el.addEventListener('input', () => {
+        syncCalculatedFields();
+        calculate();
+      });
+      el.addEventListener('change', () => {
+        syncCalculatedFields();
+        calculate();
+      });
+    });
+
+    function applyZeroDefaults() {
+      document.querySelectorAll('input[type="number"]').forEach(el => {
+        el.value = '0';
+      });
+      document.querySelectorAll('input[type="checkbox"]').forEach(el => {
+        el.checked = false;
+      });
+      document.querySelectorAll('select').forEach(el => {
+        el.selectedIndex = 0;
+      });
+      const o1Name = document.getElementById('o1_name');
+      const o2Name = document.getElementById('o2_name');
+      if (o1Name) o1Name.value = 'Angebot 1';
+      if (o2Name) o2Name.value = 'Angebot 2';
+    }
+
+    function num(id) {
+      const el = document.getElementById(id);
+      const v = el ? parseFloat(el.value) : 0;
+      return Number.isFinite(v) ? v : 0;
+    }
+
+    function txt(id) {
+      const el = document.getElementById(id);
+      return el ? (el.value || id) : id;
+    }
+
+    function checked(id) {
+      const el = document.getElementById(id);
+      return !!(el && el.checked);
+    }
+
+    function clamp(v, min, max) {
+      return Math.min(Math.max(v, min), max);
+    }
+
+    function money(v) {
+      return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(v || 0);
+    }
+
+    function fmt(v, digits = 2) {
+      return new Intl.NumberFormat('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v || 0);
+    }
+
+    function estimateCyclesPerYear(consumption, pv, autarkyPercent, directUsePercent, battCap, hasDynamicTariff, hasDirectMarketing, hasArbitrage) {
+      if (battCap <= 0) return 0;
+
+      const autarky = clamp(autarkyPercent, 0, 100) / 100;
+      const directUse = (directUsePercent > 0 ? clamp(directUsePercent, 0, 100) : 25) / 100;
+      const directConsumption = pv * directUse;
+      const pvSurplus = Math.max(0, pv - directConsumption);
+
+      let batteryEnergy = 0;
+
+      if (autarkyPercent > 0) {
+        const selfSupplied = consumption * autarky;
+        batteryEnergy = Math.max(0, selfSupplied - directConsumption);
+      } else {
+        const shiftableLoad = consumption * 0.35;
+        batteryEnergy = Math.min(pvSurplus, shiftableLoad);
+      }
+
+      let annualCycles = batteryEnergy / battCap;
+
+      let extraCyclesPerDay = 0;
+      if (hasDynamicTariff) extraCyclesPerDay += 0.10;
+      if (hasDirectMarketing) extraCyclesPerDay += 0.10;
+      if (hasArbitrage) extraCyclesPerDay += 0.30;
+
+      annualCycles += extraCyclesPerDay * 365;
+      return Math.min(550, annualCycles);
+    }
+
+    function syncCalculatedFields() {
+      const consumption = num('consumption');
+      const o1CyclesYear = estimateCyclesPerYear(
+        consumption,
+        num('o1_pv'),
+        num('o1_autarky'),
+        num('o1_direct_use'),
+        num('o1_batt_cap'),
+        checked('o1_has_dynamic_tariff'),
+        checked('o1_has_direct_marketing'),
+        checked('o1_has_arbitrage')
+      );
+      const o2CyclesYear = estimateCyclesPerYear(
+        consumption,
+        num('o2_pv'),
+        num('o2_autarky'),
+        num('o2_direct_use'),
+        num('o2_batt_cap'),
+        checked('o2_has_dynamic_tariff'),
+        checked('o2_has_direct_marketing'),
+        checked('o2_has_arbitrage')
+      );
+
+      const e1d = document.getElementById('o1_cycles_day');
+      const e2d = document.getElementById('o2_cycles_day');
+      const e1y = document.getElementById('o1_cycles_year');
+      const e2y = document.getElementById('o2_cycles_year');
+      if (e1d) e1d.value = (o1CyclesYear / 365).toFixed(2);
+      if (e2d) e2d.value = (o2CyclesYear / 365).toFixed(2);
+      if (e1y) e1y.value = o1CyclesYear.toFixed(2);
+      if (e2y) e2y.value = o2CyclesYear.toFixed(2);
+    }
+
+
+    function setStorageStatus(prefix, message = '', type = '') {
+      const el = document.getElementById(`${prefix}_storage_status`);
+      if (!el) return;
+      el.textContent = message;
+      el.className = `storage-status${type ? ' ' + type : ''}`;
+    }
+
+    function setStorageMode(prefix, mode) {
+      const selectPanel = document.getElementById(`${prefix}_select_mode`);
+      const manualPanel = document.getElementById(`${prefix}_manual_mode`);
+      if (selectPanel) selectPanel.style.display = mode === 'select' ? 'block' : 'none';
+      if (manualPanel) manualPanel.style.display = mode === 'manual' ? 'block' : 'none';
+      setStorageStatus(prefix, mode === 'manual' ? 'Manuelle Eingabe aktiv.' : '', '');
+    }
+
+    function fillBatteryDropdown(prefix) {
+      const select = document.getElementById(`${prefix}_storage_select`);
+      if (!select) return;
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">Bitte auswählen</option>';
+      batteryCatalog.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.manufacturer} – ${item.model} (${fmt(Number(item.usable_capacity_kwh || 0), 2)} kWh)`;
+        select.appendChild(option);
+      });
+      if (currentValue && [...select.options].some(opt => opt.value === currentValue)) {
+        select.value = currentValue;
+      }
+    }
+
+    function applyBatteryToOffer(prefix, batteryId) {
+      const item = batteryCatalog.find(x => x.id === batteryId);
+      if (!item) return;
+
+      const map = {
+        [`${prefix}_storage_manufacturer`]: item.manufacturer ?? '',
+        [`${prefix}_storage_model`]: item.model ?? '',
+        [`${prefix}_batt_cap`]: item.usable_capacity_kwh ?? 0,
+        [`${prefix}_guarantee_cycles`]: item.guarantee_cycles ?? 0,
+        [`${prefix}_throughput`]: item.energy_throughput_kwh ?? 0,
+        [`${prefix}_cap10`]: item.capacity_after_10_years_percent ?? 0,
+        [`${prefix}_charge_power`]: item.charge_power_kw ?? 0,
+        [`${prefix}_batt_price`]: item.price ?? 0,
+        [`${prefix}_disposal`]: item.disposal_cost ?? 0,
+        [`${prefix}_inv_replace_cost`]: item.inverter_replacement_cost ?? 0,
+        [`${prefix}_inv_replace_year`]: item.inverter_replacement_year ?? 0
+      };
+
+      Object.entries(map).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+      });
+
+      setStorageStatus(prefix, `Speicher geladen: ${item.manufacturer} ${item.model}`, 'success');
+      syncCalculatedFields();
+      calculate();
+    }
+
+    async function loadBatteryCatalog() {
+      if (!supabaseClient) {
+        setStorageStatus('o1', 'Supabase ist noch nicht konfiguriert. Trage URL und Publishable Key im Code ein.', 'error');
+        setStorageStatus('o2', 'Supabase ist noch nicht konfiguriert. Trage URL und Publishable Key im Code ein.', 'error');
+        return;
+      }
+
+      setStorageStatus('o1', 'Lade Speicherdaten ...', '');
+      setStorageStatus('o2', 'Lade Speicherdaten ...', '');
+
+      const { data, error } = await supabaseClient
+        .from(BATTERY_TABLE)
+        .select('*')
+        .eq('is_active', true)
+        .order('manufacturer', { ascending: true })
+        .order('model', { ascending: true });
+
+      if (error) {
+        console.error('Fehler beim Laden der Speicherdaten:', error);
+        setStorageStatus('o1', 'Speicherdaten konnten nicht geladen werden.', 'error');
+        setStorageStatus('o2', 'Speicherdaten konnten nicht geladen werden.', 'error');
+        return;
+      }
+
+      batteryCatalog = Array.isArray(data) ? data : [];
+      fillBatteryDropdown('o1');
+      fillBatteryDropdown('o2');
+      setStorageStatus('o1', `${batteryCatalog.length} Speicher aus Datenbank geladen.`, 'success');
+      setStorageStatus('o2', `${batteryCatalog.length} Speicher aus Datenbank geladen.`, 'success');
+    }
+
+    function getBatteryPayloadFromOffer(prefix) {
+      return {
+        manufacturer: txt(`${prefix}_storage_manufacturer`).trim(),
+        model: txt(`${prefix}_storage_model`).trim(),
+        usable_capacity_kwh: num(`${prefix}_batt_cap`),
+        guarantee_cycles: num(`${prefix}_guarantee_cycles`),
+        energy_throughput_kwh: num(`${prefix}_throughput`),
+        capacity_after_10_years_percent: num(`${prefix}_cap10`),
+        charge_power_kw: num(`${prefix}_charge_power`),
+        price: num(`${prefix}_batt_price`),
+        disposal_cost: num(`${prefix}_disposal`),
+        inverter_replacement_cost: num(`${prefix}_inv_replace_cost`),
+        inverter_replacement_year: num(`${prefix}_inv_replace_year`),
+        notes: '',
+        is_active: true
+      };
+    }
+
+    function validateBatteryPayload(payload) {
+      const errors = [];
+      if (!payload.manufacturer) errors.push('Hersteller ist ein Pflichtfeld.');
+      if (!payload.model) errors.push('Modell ist ein Pflichtfeld.');
+      if (!(payload.usable_capacity_kwh > 0)) errors.push('Die nutzbare Kapazität muss größer als 0 sein.');
+      if (payload.guarantee_cycles < 0) errors.push('Garantierte Vollzyklen dürfen nicht negativ sein.');
+      if (payload.energy_throughput_kwh < 0) errors.push('Garantierter Energiedurchsatz darf nicht negativ sein.');
+      if (payload.capacity_after_10_years_percent < 0 || payload.capacity_after_10_years_percent > 100) errors.push('Die Kapazitätsgarantie nach 10 Jahren muss zwischen 0 und 100 liegen.');
+      if (payload.charge_power_kw < 0) errors.push('Be-/Entladeleistung darf nicht negativ sein.');
+      if (payload.price < 0) errors.push('Speicherpreis darf nicht negativ sein.');
+      if (payload.disposal_cost < 0) errors.push('Entsorgungskosten dürfen nicht negativ sein.');
+      if (payload.inverter_replacement_cost < 0) errors.push('Wechselrichter-Ersatzkosten dürfen nicht negativ sein.');
+      if (payload.inverter_replacement_year < 0) errors.push('Das Jahr für den Wechselrichter-Ersatz darf nicht negativ sein.');
+      return errors;
+    }
+
+    async function saveBatteryFromOffer(prefix) {
+      if (!supabaseClient) {
+        setStorageStatus(prefix, 'Supabase ist nicht konfiguriert. Speichern ist daher nicht möglich.', 'error');
+        return;
+      }
+
+      const payload = getBatteryPayloadFromOffer(prefix);
+      const errors = validateBatteryPayload(payload);
+
+      if (errors.length) {
+        setStorageStatus(prefix, errors.join(' '), 'error');
+        alert(errors.join('\n'));
+        return;
+      }
+
+      const duplicate = batteryCatalog.find(item =>
+        String(item.manufacturer || '').trim().toLowerCase() === payload.manufacturer.toLowerCase() &&
+        String(item.model || '').trim().toLowerCase() === payload.model.toLowerCase()
+      );
+
+      if (duplicate) {
+        const msg = 'Dieser Speicher existiert bereits in der Datenbank.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
+      setStorageStatus(prefix, 'Speicher wird gespeichert ...', '');
+
+      const { data, error } = await supabaseClient
+        .from(BATTERY_TABLE)
+        .insert([payload])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Fehler beim Speichern des Speichers:', error);
+        setStorageStatus(prefix, 'Speicher konnte nicht gespeichert werden.', 'error');
+        alert('Speicher konnte nicht gespeichert werden. Prüfe RLS, Insert-Policy und Tabellenspalten.');
+        return;
+      }
+
+      await loadBatteryCatalog();
+
+      const select = document.getElementById(`${prefix}_storage_select`);
+      if (select && data?.id) {
+        select.value = data.id;
+        applyBatteryToOffer(prefix, data.id);
+      }
+
+      setStorageMode(prefix, 'select');
+      setStorageStatus(prefix, `Speicher gespeichert: ${payload.manufacturer} ${payload.model}`, 'success');
+      alert('Speicher wurde erfolgreich gespeichert.');
+    }
+
+    function bindBatterySelectors() {
+      ['o1', 'o2'].forEach(prefix => {
+        const select = document.getElementById(`${prefix}_storage_select`);
+        if (!select || select.dataset.bound === '1') return;
+        select.addEventListener('change', event => {
+          const batteryId = event.target.value;
+          if (!batteryId) {
+            setStorageStatus(prefix, '', '');
+            return;
+          }
+          applyBatteryToOffer(prefix, batteryId);
+        });
+        select.dataset.bound = '1';
+      });
+    }
+
+
+    function resetDefaults() {
+      applyZeroDefaults();
+      setStorageMode('o1', 'select');
+      setStorageMode('o2', 'select');
+      setStorageStatus('o1', batteryCatalog.length ? `${batteryCatalog.length} Speicher aus Datenbank geladen.` : '', batteryCatalog.length ? 'success' : '');
+      setStorageStatus('o2', batteryCatalog.length ? `${batteryCatalog.length} Speicher aus Datenbank geladen.` : '', batteryCatalog.length ? 'success' : '');
+      syncCalculatedFields();
+      calculate();
+    }
+
+    function downloadPDF() {
+      const name1 = txt('o1_name');
+      const name2 = txt('o2_name');
+      const total1 = document.getElementById('resultO1')?.textContent || '-';
+      const total2 = document.getElementById('resultO2')?.textContent || '-';
+      const diff = document.getElementById('resultDiff')?.textContent || '-';
+      const winnerText = document.getElementById('winnerBox')?.textContent || '';
+      const cards = document.querySelectorAll('#detailTable .detail-card');
+      let rows = '';
+      cards.forEach(card => {
+        const label = card.querySelector('.detail-head')?.innerText || '';
+        const values = card.querySelectorAll('.detail-value');
+        if (values.length >= 3) {
+          rows += `<tr><td>${label}</td><td>${values[1].innerText}</td><td>${values[2].innerText}</td></tr>`;
+        }
+      });
+      const today = new Date().toLocaleDateString('de-DE');
+      const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>PV-Wirtschaftlichkeitsberechnung</title><style>
+        @page{size:A4 landscape;margin:12mm}
+        body{font-family:Arial,Helvetica,sans-serif;color:#18212b;margin:0;background:#fff}
+        .page{padding:0}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0f4c81;padding-bottom:14px;margin-bottom:18px}
+        .title{font-size:28px;font-weight:700;color:#0f1720;margin:0 0 6px 0}
+        .subtitle{font-size:13px;color:#5f6b7a;margin:0}
+        .datebox{background:#eef5fb;border:1px solid #cfe0ef;padding:10px 12px;border-radius:6px;font-size:12px;text-align:right;min-width:170px}
+        .summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px}
+        .summary-card{border:1px solid #d7e0ea;border-radius:6px;padding:14px;background:linear-gradient(180deg,#ffffff,#f7fbff)}
+        .summary-card.offer1{border-left:5px solid #1d4ed8}.summary-card.offer2{border-left:5px solid #0f766e}.summary-card.diff{border-left:5px solid #f59e0b;background:linear-gradient(180deg,#fffdf7,#fffaf0)}
+        .label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6a7584;font-weight:700;margin-bottom:8px}
+        .value{font-size:24px;font-weight:700;color:#18212b}
+        .winner{margin-bottom:16px;padding:12px 14px;border:1px solid #d7e0ea;border-radius:6px;background:#f6faff;font-size:13px;line-height:1.45}
+        table{width:100%;border-collapse:collapse;font-size:12px}
+        thead th{background:#0f4c81;color:#fff;padding:10px 12px;text-align:left;font-size:12px}
+        thead th:nth-child(2){background:#1d4ed8} thead th:nth-child(3){background:#0f766e}
+        tbody td{border-bottom:1px solid #dfe6ee;padding:9px 12px;vertical-align:top}
+        tbody tr:nth-child(even){background:#f8fbfe} tbody td:first-child{font-weight:700;color:#1b2530}
+        .footer{margin-top:14px;font-size:11px;color:#66727f;border-top:1px solid #dfe6ee;padding-top:10px}
+      </style></head><body><div class="page"><div class="header"><div><h1 class="title">PV-Wirtschaftlichkeitsberechnung</h1><p class="subtitle">Professioneller Angebotsvergleich über den gewählten Betrachtungszeitraum</p></div><div class="datebox"><div><strong>Datum</strong></div><div>${today}</div></div></div><div class="summary"><div class="summary-card offer1"><div class="label">${name1}</div><div class="value">${total1}</div></div><div class="summary-card offer2"><div class="label">${name2}</div><div class="value">${total2}</div></div><div class="summary-card diff"><div class="label">Preisvorteil</div><div class="value">${diff}</div></div></div><div class="winner">${winnerText}</div><table><thead><tr><th>Baustein</th><th>${name1}</th><th>${name2}</th></tr></thead><tbody>${rows}</tbody></table><div class="footer">Diese Auswertung dient als strukturierte Folgekostenbetrachtung und Angebotsvergleich. Grundlage sind die im Tool hinterlegten Eingabewerte und Annahmen.</div></div></body></html>`;
+      const w = window.open('', '_blank');
+      if (!w) return;
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    function calcWarrantyYears(capacity, guaranteeCycles, throughput, actualCyclesYear) {
+      const yearsByCycles = actualCyclesYear > 0 ? guaranteeCycles / actualCyclesYear : Infinity;
+      const annualThroughput = capacity * actualCyclesYear;
+      const hasThroughputLimit = throughput > 0;
+      const yearsByThroughput = hasThroughputLimit && annualThroughput > 0 ? throughput / annualThroughput : Infinity;
+      const years = Math.min(yearsByCycles, yearsByThroughput);
+      let reason = 'Vollzyklen';
+      if (hasThroughputLimit && yearsByThroughput < yearsByCycles) reason = 'Energiedurchsatz';
+      return { years, hasThroughputLimit, reason };
+    }
+
+    function calcBatteryDegAnnualSeries(capacity, cyclesPerYear, cap10Percent, years, price) {
+      const out = [];
+      const cap10 = clamp(cap10Percent, 0, 100) / 100;
+      const lossAtYear10 = 1 - cap10;
+      const projectedCap20Percent = clamp(cap10Percent - 20, 0, 100);
+      const projectedCap20 = projectedCap20Percent / 100;
+      const slopeFirst10PerYear = lossAtYear10 / 10;
+      const lossAtYear20 = 1 - projectedCap20;
+      const additionalLossSecond10 = Math.max(0, lossAtYear20 - lossAtYear10);
+      const slopeSecond10PerYear = additionalLossSecond10 / 10;
+      for (let year = 1; year <= years; year++) {
+        let midpointLossFraction;
+        if (year <= 10) midpointLossFraction = slopeFirst10PerYear * (year - 0.5);
+        else midpointLossFraction = lossAtYear10 + slopeSecond10PerYear * (year - 10 - 0.5);
+        out.push(capacity * midpointLossFraction * cyclesPerYear * price);
+      }
+      return out;
+    }
+
+    function calcPvDegAnnualSeries(productionPerYear, restAfter30Percent, years, price) {
+      const out = [];
+      const rest30 = clamp(restAfter30Percent, 0, 100) / 100;
+      const lossAt30 = 1 - rest30;
+      const slopePerYear = lossAt30 / 30;
+      for (let year = 1; year <= years; year++) {
+        const midpointLossFraction = slopePerYear * (year - 0.5);
+        out.push(productionPerYear * midpointLossFraction * price);
+      }
+      return out;
+    }
+
+    function calcPvDegCost(productionPerYear, restAfter30Percent, years, price) {
+      const annual = calcPvDegAnnualSeries(productionPerYear, restAfter30Percent, years, price);
+      const rest30 = clamp(restAfter30Percent, 0, 100) / 100;
+      const lossAt30 = 1 - rest30;
+      const slopePerYear = lossAt30 / 30;
+      return {
+        total: annual.reduce((a, b) => a + b, 0),
+        annual,
+        restAt10Percent: clamp((1 - slopePerYear * 10) * 100, 0, 100),
+        restAt20Percent: clamp((1 - slopePerYear * 20) * 100, 0, 100)
+      };
+    }
+
+    function calcInverterReplacement(cost, year, years) {
+      return cost > 0 && year > 0 && year <= years ? cost : 0;
+    }
+
+    function calcFinancingInterest(principal, annualRatePercent, years) {
+      const rate = Math.max(0, annualRatePercent) / 100;
+      const termYears = Math.max(0, years);
+      if (principal <= 0 || rate <= 0 || termYears <= 0) return 0;
+      const months = Math.round(termYears * 12);
+      const monthlyRate = rate / 12;
+      const annuity = principal * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -months)));
+      return Math.max(0, annuity * months - principal);
+    }
+
+    function calcAnnualFinancingInterestSeries(principal, annualRatePercent, years, maxYears) {
+      const out = Array(Math.max(0, maxYears)).fill(0);
+      const rate = Math.max(0, annualRatePercent) / 100;
+      const termYears = Math.max(0, years);
+      if (principal <= 0 || rate <= 0 || termYears <= 0) return out;
+      const months = Math.round(termYears * 12);
+      const monthlyRate = rate / 12;
+      const annuity = principal * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -months)));
+      let balance = principal;
+      for (let month = 1; month <= months; month++) {
+        const interest = balance * monthlyRate;
+        const principalPart = annuity - interest;
+        balance = Math.max(0, balance - principalPart);
+        const yearIndex = Math.floor((month - 1) / 12);
+        if (yearIndex < out.length) out[yearIndex] += interest;
+      }
+      return out;
+    }
+
+    function escalateAnnualCost(baseAnnualCost, years, rate) {
+      let sum = 0;
+      for (let y = 0; y < years; y++) sum += baseAnnualCost * Math.pow(1 + rate, y);
+      return sum;
+    }
+
+    function findEconomicReplacementYear(capacity, cyclesPerYear, cap10Percent, years, price, replacementCost) {
+      if (replacementCost <= 0 || years <= 1) return null;
+      const oldSeries = calcBatteryDegAnnualSeries(capacity, cyclesPerYear, cap10Percent, years, price);
+      for (let replaceYear = 1; replaceYear < years; replaceYear++) {
+        let keepOldFutureCost = 0;
+        let replaceFutureCost = replacementCost;
+        for (let year = replaceYear + 1; year <= years; year++) {
+          keepOldFutureCost += oldSeries[year - 1] || 0;
+          const newAge = year - replaceYear;
+          const newSeries = calcBatteryDegAnnualSeries(capacity, cyclesPerYear, cap10Percent, newAge, price);
+          replaceFutureCost += newSeries[newSeries.length - 1] || 0;
+        }
+        if (replaceFutureCost < keepOldFutureCost) return replaceYear;
+      }
+      return null;
+    }
+
+    function numericFromFormatted(val) {
+      if (typeof val !== 'string') return NaN;
+      const cleaned = val.replace(/<[^>]*>/g, '').replace(/\./g, '').replace(/,/g, '.').replace(/[^0-9\-.]/g, '').trim();
+      return parseFloat(cleaned);
+    }
+
+    function getPreferredDirection(label) {
+      return ['Garantieende Speicher'].includes(label) ? 'higher' : 'lower';
+    }
+
+    function row(label, a, b, note = '') {
+      const numA = numericFromFormatted(String(a));
+      const numB = numericFromFormatted(String(b));
+      let classA = '';
+      let classB = '';
+      if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA !== numB) {
+        const aBetter = getPreferredDirection(label) === 'higher' ? numA > numB : numA < numB;
+        classA = aBetter ? 'best-val-1' : '';
+        classB = aBetter ? '' : 'best-val-2';
+      }
+      return `<div class="detail-card"><div class="detail-head">${label}</div><div class="detail-grid"><div><div class="detail-label">Baustein</div><div class="detail-value">${label}</div></div><div><div class="detail-label">Angebot 1</div><div class="detail-value ${classA}">${a}</div></div><div><div class="detail-label">Angebot 2</div><div class="detail-value ${classB}">${b}</div></div><div><div class="detail-label">Hinweis</div><div class="detail-value">${note}</div></div></div></div>`;
+    }
+
+    function renderBreakEvenChart(series1, series2, label1, label2) {
+      const svg = document.getElementById('breakevenSvg');
+      const meta = document.getElementById('chartMeta');
+      if (!svg || !meta || !series1.length || !series2.length) return;
+      const width = 1000;
+      const height = 360;
+      const pad = { top: 18, right: 24, bottom: 40, left: 88 };
+      const chartW = width - pad.left - pad.right;
+      const chartH = height - pad.top - pad.bottom;
+      const maxVal = Math.max(...series1, ...series2, 1);
+      const years = Math.max(series1.length, series2.length);
+      const x = idx => pad.left + (years === 1 ? 0 : (idx / (years - 1)) * chartW);
+      const y = val => pad.top + chartH - (val / maxVal) * chartH;
+      const makePath = series => series.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(2)} ${y(v).toFixed(2)}`).join(' ');
+      const path1 = makePath(series1);
+      const path2 = makePath(series2);
+      let breakEvenYear = null;
+      for (let i = 1; i < years; i++) {
+        const prev = series1[i - 1] - series2[i - 1];
+        const curr = series1[i] - series2[i];
+        if ((prev > 0 && curr <= 0) || (prev < 0 && curr >= 0)) {
+          const span = Math.abs(prev) + Math.abs(curr);
+          const ratio = span === 0 ? 0 : Math.abs(prev) / span;
+          breakEvenYear = i + ratio;
+          break;
+        }
+      }
+      let grid = '';
+      for (let i = 0; i < 5; i++) {
+        const gy = pad.top + (chartH / 4) * i;
+        const value = maxVal * (1 - i / 4);
+        grid += `<line x1="${pad.left}" y1="${gy}" x2="${width - pad.right}" y2="${gy}" stroke="rgba(148,163,184,0.24)" stroke-width="1" />`;
+        grid += `<text x="${pad.left - 10}" y="${gy + 4}" text-anchor="end" font-size="11" fill="#64748b">${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value)}</text>`;
+      }
+      let labels = '';
+      for (let i = 0; i < years; i++) labels += `<text x="${x(i)}" y="${height - 12}" text-anchor="middle" font-size="11" fill="#64748b">J${i + 1}</text>`;
+      let breakMarker = '';
+      let breakText = '<div class="chart-chip">Kein Break-even im gewählten Zeitraum</div>';
+      if (breakEvenYear !== null) {
+        const bx = x(Math.max(0, Math.min(years - 1, breakEvenYear - 1)));
+        breakMarker = `<line x1="${bx}" y1="${pad.top}" x2="${bx}" y2="${height - pad.bottom}" stroke="#f59e0b" stroke-width="2" stroke-dasharray="7 7" />`;
+        breakText = `<div class="chart-chip">Break-even ab ca. Jahr ${breakEvenYear.toFixed(1)}</div>`;
+      }
+      const cheaperText = series1[series1.length - 1] < series2[series2.length - 1] ? `${label1} ist am Ende günstiger` : series2[series2.length - 1] < series1[series1.length - 1] ? `${label2} ist am Ende günstiger` : 'Beide Angebote liegen am Ende gleichauf';
+      meta.innerHTML = `${breakText}<div class="chart-chip">${cheaperText}</div><div class="chart-chip">Kumulierte Kostenentwicklung</div>`;
+      const lastX = x(series1.length - 1);
+      const lastY1 = y(series1[series1.length - 1]);
+      const lastY2 = y(series2[series2.length - 1]);
+      svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" rx="8" fill="#ffffff" />${grid}${labels}${breakMarker}<defs><linearGradient id="lineA" x1="0" x2="1"><stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#60a5fa"/></linearGradient><linearGradient id="lineB" x1="0" x2="1"><stop offset="0%" stop-color="#0f766e"/><stop offset="100%" stop-color="#34d399"/></linearGradient><filter id="softGlow"><feGaussianBlur stdDeviation="2.8" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="${path1}" fill="none" stroke="url(#lineA)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#softGlow)" /><path d="${path2}" fill="none" stroke="url(#lineB)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#softGlow)" /><circle cx="${lastX}" cy="${lastY1}" r="5.5" fill="#1d4ed8" /><circle cx="${lastX}" cy="${lastY2}" r="5.5" fill="#0f766e" /><text x="${Math.min(width - 10, lastX + 12)}" y="${lastY1 - 8}" font-size="11" fill="#1d4ed8">${label1}</text><text x="${Math.min(width - 10, lastX + 12)}" y="${lastY2 + 16}" font-size="11" fill="#0f766e">${label2}</text>`;
+    }
+
+    function calculate() {
+      const years = Math.max(1, num('years'));
+      const consumption = Math.max(0, num('consumption'));
+      const escalationRate = num('priceEscalation') / 100;
+      const feedinPrice = num('feedin_price');
+
+      const o1 = { name: txt('o1_name'), purchase: num('o1_purchase'), price: num('o1_price'), pv: num('o1_pv'), pvDeg30: num('o1_pv_deg30'), battCap: num('o1_batt_cap'), battPrice: num('o1_batt_price'), disposal: num('o1_disposal'), guaranteeCycles: num('o1_guarantee_cycles'), throughput: num('o1_throughput'), cyclesYear: num('o1_cycles_year'), cap10: num('o1_cap10'), chargePower: num('o1_charge_power'), invReplaceCost: num('o1_inv_replace_cost'), invReplaceYear: num('o1_inv_replace_year'), autarky: num('o1_autarky'), finRate: num('o1_fin_rate'), finYears: num('o1_fin_years') };
+      const o2 = { name: txt('o2_name'), purchase: num('o2_purchase'), price: num('o2_price'), pv: num('o2_pv'), pvDeg30: num('o2_pv_deg30'), battCap: num('o2_batt_cap'), battPrice: num('o2_batt_price'), disposal: num('o2_disposal'), guaranteeCycles: num('o2_guarantee_cycles'), throughput: num('o2_throughput'), cyclesYear: num('o2_cycles_year'), cap10: num('o2_cap10'), chargePower: num('o2_charge_power'), invReplaceCost: num('o2_inv_replace_cost'), invReplaceYear: num('o2_inv_replace_year'), autarky: num('o2_autarky'), finRate: num('o2_fin_rate'), finYears: num('o2_fin_years') };
+
+      const pvDiff = Math.abs(o1.pv - o2.pv);
+      const pvPenalty1 = o1.pv < o2.pv ? pvDiff * years * o1.price : 0;
+      const pvPenalty2 = o2.pv < o1.pv ? pvDiff * years * o2.price : 0;
+      const battDiff = Math.abs(o1.battCap - o2.battCap);
+      const battPenalty1 = o1.battCap < o2.battCap ? battDiff * o1.cyclesYear * years * o1.price : 0;
+      const battPenalty2 = o2.battCap < o1.battCap ? battDiff * o2.cyclesYear * years * o2.price : 0;
+      const warranty1 = calcWarrantyYears(o1.battCap, o1.guaranteeCycles, o1.throughput, o1.cyclesYear);
+      const warranty2 = calcWarrantyYears(o2.battCap, o2.guaranteeCycles, o2.throughput, o2.cyclesYear);
+      const replacementCost1 = warranty1.years < years ? (o1.battPrice + o1.disposal) : 0;
+      const replacementCost2 = warranty2.years < years ? (o2.battPrice + o2.disposal) : 0;
+      const replacementYear1 = replacementCost1 > 0 ? Math.ceil(warranty1.years) : null;
+      const replacementYear2 = replacementCost2 > 0 ? Math.ceil(warranty2.years) : null;
+      let battDegSeries1 = calcBatteryDegAnnualSeries(o1.battCap, o1.cyclesYear, o1.cap10, years, o1.price);
+      let battDegSeries2 = calcBatteryDegAnnualSeries(o2.battCap, o2.cyclesYear, o2.cap10, years, o2.price);
+      if (replacementYear1 !== null) {
+        for (let i = 0; i < battDegSeries1.length; i++) if (i + 1 > replacementYear1) battDegSeries1[i] = calcBatteryDegAnnualSeries(o1.battCap, o1.cyclesYear, o1.cap10, i + 1 - replacementYear1, o1.price).slice(-1)[0] || 0;
+      }
+      if (replacementYear2 !== null) {
+        for (let i = 0; i < battDegSeries2.length; i++) if (i + 1 > replacementYear2) battDegSeries2[i] = calcBatteryDegAnnualSeries(o2.battCap, o2.cyclesYear, o2.cap10, i + 1 - replacementYear2, o2.price).slice(-1)[0] || 0;
+      }
+      const deg1AdjustedTotal = battDegSeries1.reduce((a, b) => a + b, 0);
+      const deg2AdjustedTotal = battDegSeries2.reduce((a, b) => a + b, 0);
+      const pvDeg1 = calcPvDegCost(o1.pv, o1.pvDeg30, years, o1.price);
+      const pvDeg2 = calcPvDegCost(o2.pv, o2.pvDeg30, years, o2.price);
+      const inverterCost1 = calcInverterReplacement(o1.invReplaceCost, o1.invReplaceYear, years);
+      const inverterCost2 = calcInverterReplacement(o2.invReplaceCost, o2.invReplaceYear, years);
+      const financingCost1 = calcFinancingInterest(o1.purchase, o1.finRate, o1.finYears);
+      const financingCost2 = calcFinancingInterest(o2.purchase, o2.finRate, o2.finYears);
+      const financingSeries1 = calcAnnualFinancingInterestSeries(o1.purchase, o1.finRate, o1.finYears, years);
+      const financingSeries2 = calcAnnualFinancingInterestSeries(o2.purchase, o2.finRate, o2.finYears, years);
+      const powerDiff = Math.abs(o1.chargePower - o2.chargePower);
+      const powerPenalty1 = o1.chargePower < o2.chargePower ? powerDiff * 365 * years * o1.price : 0;
+      const powerPenalty2 = o2.chargePower < o1.chargePower ? powerDiff * 365 * years * o2.price : 0;
+      const selfUse1 = consumption * (clamp(o1.autarky, 0, 100) / 100);
+      const selfUse2 = consumption * (clamp(o2.autarky, 0, 100) / 100);
+      const feedin1 = Math.max(0, o1.pv - selfUse1);
+      const feedin2 = Math.max(0, o2.pv - selfUse2);
+      const feedinRevenue1 = feedin1 * years * feedinPrice;
+      const feedinRevenue2 = feedin2 * years * feedinPrice;
+      const total1 = o1.purchase + replacementCost1 + inverterCost1 + financingCost1 - feedinRevenue1 + escalateAnnualCost(pvPenalty1 / years, years, escalationRate) + escalateAnnualCost(battPenalty1 / years, years, escalationRate) + escalateAnnualCost(powerPenalty1 / years, years, escalationRate) + battDegSeries1.reduce((sum, val, idx) => sum + val * Math.pow(1 + escalationRate, idx), 0) + pvDeg1.annual.reduce((sum, val, idx) => sum + val * Math.pow(1 + escalationRate, idx), 0);
+      const total2 = o2.purchase + replacementCost2 + inverterCost2 + financingCost2 - feedinRevenue2 + escalateAnnualCost(pvPenalty2 / years, years, escalationRate) + escalateAnnualCost(battPenalty2 / years, years, escalationRate) + escalateAnnualCost(powerPenalty2 / years, years, escalationRate) + battDegSeries2.reduce((sum, val, idx) => sum + val * Math.pow(1 + escalationRate, idx), 0) + pvDeg2.annual.reduce((sum, val, idx) => sum + val * Math.pow(1 + escalationRate, idx), 0);
+      const yearlySeries1 = [];
+      const yearlySeries2 = [];
+      let cum1 = o1.purchase;
+      let cum2 = o2.purchase;
+      for (let year = 1; year <= years; year++) {
+        const growth = Math.pow(1 + escalationRate, year - 1);
+        cum1 += ((pvPenalty1 / years) + (battPenalty1 / years) + (powerPenalty1 / years) - (feedinRevenue1 / years)) * growth;
+        cum2 += ((pvPenalty2 / years) + (battPenalty2 / years) + (powerPenalty2 / years) - (feedinRevenue2 / years)) * growth;
+        cum1 += (battDegSeries1[year - 1] || 0) * growth + (pvDeg1.annual[year - 1] || 0) * growth + (financingSeries1[year - 1] || 0);
+        cum2 += (battDegSeries2[year - 1] || 0) * growth + (pvDeg2.annual[year - 1] || 0) * growth + (financingSeries2[year - 1] || 0);
+        if (replacementCost1 > 0 && replacementYear1 === year) cum1 += replacementCost1;
+        if (replacementCost2 > 0 && replacementYear2 === year) cum2 += replacementCost2;
+        if (inverterCost1 > 0 && Math.round(o1.invReplaceYear) === year) cum1 += inverterCost1;
+        if (inverterCost2 > 0 && Math.round(o2.invReplaceYear) === year) cum2 += inverterCost2;
+        yearlySeries1.push(cum1);
+        yearlySeries2.push(cum2);
+      }
+      document.getElementById('resultO1').textContent = money(total1);
+      document.getElementById('resultO2').textContent = money(total2);
+      const diff = total1 - total2;
+      const resultDiff = document.getElementById('resultDiff');
+      const winnerBox = document.getElementById('winnerBox');
+      const replacementHintBox = document.getElementById('replacementHintBox');
+      if (diff < 0) {
+        resultDiff.textContent = `${o1.name} ist ${money(Math.abs(diff))} günstiger`;
+        resultDiff.className = 'value good';
+        winnerBox.innerHTML = `<strong>${o1.name}</strong> ist im ${fmt(years,0)}-Jahres-Vergleich günstiger. Vorteil: <strong>${money(Math.abs(diff))}</strong>.`;
+      } else if (diff > 0) {
+        resultDiff.textContent = `${o2.name} ist ${money(Math.abs(diff))} günstiger`;
+        resultDiff.className = 'value bad';
+        winnerBox.innerHTML = `<strong>${o2.name}</strong> ist im ${fmt(years,0)}-Jahres-Vergleich günstiger. Vorteil: <strong>${money(Math.abs(diff))}</strong>.`;
+      } else {
+        resultDiff.textContent = 'Gleichstand';
+        resultDiff.className = 'value';
+        winnerBox.innerHTML = `Beide Angebote liegen im ${fmt(years,0)}-Jahres-Vergleich gleichauf.`;
+      }
+      const economicReplacementYear1 = findEconomicReplacementYear(o1.battCap, o1.cyclesYear, o1.cap10, years, o1.price, o1.battPrice + o1.disposal);
+      const economicReplacementYear2 = findEconomicReplacementYear(o2.battCap, o2.cyclesYear, o2.cap10, years, o2.price, o2.battPrice + o2.disposal);
+      const replacementHints = [];
+      if (economicReplacementYear1 !== null && economicReplacementYear1 < years) replacementHints.push(`${o1.name}: Ein wirtschaftlicher Speichertausch kann ab ca. Jahr ${economicReplacementYear1} sinnvoll sein.`);
+      if (economicReplacementYear2 !== null && economicReplacementYear2 < years) replacementHints.push(`${o2.name}: Ein wirtschaftlicher Speichertausch kann ab ca. Jahr ${economicReplacementYear2} sinnvoll sein.`);
+      if (replacementHintBox) {
+        replacementHintBox.style.display = replacementHints.length ? 'block' : 'none';
+        replacementHintBox.innerHTML = replacementHints.length ? `<strong>Hinweis zum wirtschaftlichen Speichertausch:</strong><br>${replacementHints.join('<br>')}` : '';
+      }
+      const details = [];
+      details.push(row('Kaufpreis', money(o1.purchase), money(o2.purchase), 'Direkter Kaufpreis der Anlage inklusive ursprünglich enthaltenem Speicher'));
+      details.push(row('Kosten Produktionsdifferenz', money(pvPenalty1), money(pvPenalty2), `Differenz: ${fmt(pvDiff)} kWh/Jahr, gerechnet über ${fmt(years,0)} Jahre`));
+      details.push(row('PV-Degradation', money(pvDeg1.total), money(pvDeg2.total), `Kosten durch reduzierte PV-Leistung über ${fmt(years,0)} Jahre; Restleistung nach ${fmt(years,0)} Jahren: ${fmt(years<=10?pvDeg1.restAt10Percent:pvDeg1.restAt20Percent)}% / ${fmt(years<=10?pvDeg2.restAt10Percent:pvDeg2.restAt20Percent)}%`));
+      details.push(row('Kosten Speicherkapazitätsdifferenz', money(battPenalty1), money(battPenalty2), `Differenz: ${fmt(battDiff)} kWh Speicher, bewertet mit ${fmt(o1.cyclesYear,0)} / ${fmt(o2.cyclesYear,0)} Zyklen pro Jahr`));
+      details.push(row('Garantieende Speicher', `${fmt(warranty1.years)} Jahre`, `${fmt(warranty2.years)} Jahre`, `${o1.name}: ${warranty1.hasThroughputLimit ? `früheres Ende durch ${warranty1.reason}` : 'keine Durchsatzgrenze, Berechnung nur über Vollzyklen'}; ${o2.name}: ${warranty2.hasThroughputLimit ? `früheres Ende durch ${warranty2.reason}` : 'keine Durchsatzgrenze, Berechnung nur über Vollzyklen'}`));
+      details.push(row('Speicheraustausch innerhalb Betrachtungszeitraum', money(replacementCost1), money(replacementCost2), `Wird nur bei dem Angebot angesetzt, dessen Garantie vor Ablauf von ${fmt(years,0)} Jahren endet: Speicherpreis + Entsorgung / Austauschnebenkosten`));
+      details.push(row('Speicher-Degradation', money(deg1AdjustedTotal), money(deg2AdjustedTotal), `Kapazitätsverlust des Speichers über ${fmt(years,0)} Jahre berücksichtigt; bei angesetztem Speicheraustausch wird die Degradation danach neu gestartet`));
+      details.push(row('Wechselrichter-Ersatzkosten', money(inverterCost1), money(inverterCost2), `Wird angesetzt, wenn der Austauschzeitpunkt innerhalb von ${fmt(years,0)} Jahren liegt`));
+      details.push(row('Kosten Leistungsdifferenz', money(powerPenalty1), money(powerPenalty2), `Differenz: ${fmt(powerDiff)} kW, angesetzt mit festem Faktor 1x pro Tag (365)`));
+      details.push(row('Einspeiseerlöse', money(-feedinRevenue1), money(-feedinRevenue2), `Überschussproduktion: ${fmt(feedin1)} / ${fmt(feedin2)} kWh pro Jahr bei ${money(feedinPrice)}/kWh`));
+      details.push(row('Finanzierungskosten', money(financingCost1), money(financingCost2), `Zinskosten auf die Kaufsumme bei ${fmt(o1.finRate)}% / ${fmt(o2.finRate)}% Effektivzins und ${fmt(o1.finYears,0)} / ${fmt(o2.finYears,0)} Jahren Laufzeit`));
+      details.push(row('Gesamtpreis 20 Jahre', `<strong>${money(total1)}</strong>`, `<strong>${money(total2)}</strong>`, `Summe aller Bausteine mit angenommener Strompreissteigerung von ${fmt(escalationRate * 100)} % pro Jahr`));
+      document.getElementById('detailTable').innerHTML = details.join('');
+      renderBreakEvenChart(yearlySeries1, yearlySeries2, o1.name, o2.name);
+      document.getElementById('footerNote').innerHTML = `Verwendete Strompreise: Es wird durchgängig mit dem jeweiligen Strompreis des jeweiligen Angebots gerechnet. Autarkiegrad ist aktuell nur Eingangsgröße ohne direkte Kostenwirkung, um Doppelzählungen zu vermeiden. Ladezyklen pro Tag und Jahr werden als Näherungswert automatisch aus Verbrauch, PV-Produktion, Autarkiegrad, Direktverbrauchsquote ohne Speicher und Speicherkapazität berechnet. Wenn kein Autarkiegrad eingetragen ist, verwendet das Tool ersatzweise eine konservative Grundschätzung aus PV-Überschuss und verschiebbarem Verbrauch, damit auch ohne gesetzte Häkchen eine Basisschätzung entsteht. Dynamischer Stromtarif, Direktvermarktung und Arbitrage erhöhen diesen Näherungswert zusätzlich, weil dadurch typischerweise mehr Speicherbewegung und Netzladung entsteht. Diese Profilaufschläge werden je Angebot separat berücksichtigt. <br><br>Garantie-Logik: Wenn eine <strong>garantierte Energiedurchsatzmenge</strong> größer als 0 hinterlegt ist, wird das Garantieende aus <strong>garantierten Vollzyklen</strong> und <strong>Energiedurchsatzmenge</strong> berechnet. Der frühere Zeitpunkt gewinnt. Ist keine Energiedurchsatzmenge hinterlegt oder steht dort 0, wird das Garantieende nur über die Vollzyklen berechnet. Läuft die Garantie eines Angebots innerhalb des Betrachtungszeitraums ab, wird für dieses Angebot ein Speicheraustausch angesetzt.`;
+    }
+
+    bindBatterySelectors();
+    setStorageMode('o1', 'select');
+    setStorageMode('o2', 'select');
+    applyZeroDefaults();
+    syncCalculatedFields();
+    calculate();
+    loadBatteryCatalog();
+  </script>
+</body>
+</html>
