@@ -722,7 +722,7 @@ button:hover{transform:translateY(-1px)}
     const SUPABASE_URL = 'https://rossmvnscvsflvdlxxad.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ';
     const BATTERY_TABLE = 'battery_storage_models';
-    const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('HIER_DEINE_SUPABASE_URL_EINTRAGEN') && !SUPABASE_KEY.includes('HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN');
+    const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('https://rossmvnscvsflvdlxxad.supabase.co') && !SUPABASE_KEY.includes('sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ');
     const supabaseClient = hasSupabaseConfig && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
     let batteryCatalog = [];
     const defaultValues = {};
