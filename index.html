@@ -370,6 +370,30 @@ button:hover{transform:translateY(-1px)}
       <div class="hero-subtitle">Vergleiche zwei Angebote über den gewählten Betrachtungszeitraum inklusive Kaufpreis, Folgekosten, Speicher, PV-Degradation, Finanzierung und weiterer wirtschaftlicher Auswirkungen in einer klaren, hochwertigen Darstellung.</div>
     </div>
 
+
+    <div class="card" id="auth_card">
+      <div class="section-title-row"><h2>Benutzerzugang</h2><div class="section-kicker">Auth</div></div>
+      <div id="auth_logged_out">
+        <div class="field" style="display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:10px;align-items:end;">
+          <div>
+            <label for="auth_email">E-Mail</label>
+            <input id="auth_email" type="email" placeholder="name@firma.de" />
+          </div>
+          <div>
+            <button type="button" onclick="sendMagicLink()">Login-Link senden</button>
+          </div>
+        </div>
+        <small style="display:block;margin-top:8px;color:var(--muted);">Nur eingeloggte Nutzer können neue Speicher dauerhaft speichern.</small>
+      </div>
+      <div id="auth_logged_in" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div><strong>Angemeldet als:</strong> <span id="auth_user_email">-</span></div>
+          <div><button type="button" class="secondary" onclick="logoutUser()">Abmelden</button></div>
+        </div>
+      </div>
+      <div id="auth_status" style="margin-top:10px;font-size:14px;color:var(--muted);"></div>
+    </div>
+
     <div class="grid">
       <div class="card">
         <div class="section-title-row"><h2>Grunddaten</h2><div class="section-kicker">Basis</div></div>
@@ -470,7 +494,7 @@ button:hover{transform:translateY(-1px)}
                   <div id="o1_manual_mode" class="storage-mode-panel" style="display:none;">
                     <small>Hier kannst du einen neuen Speicher manuell pflegen und direkt dauerhaft in Supabase speichern.</small>
                     <div class="actions" style="margin-top:10px;">
-                      <button type="button" class="secondary" onclick="saveBatteryFromOffer('o1')">Speicher speichern</button>
+                      <button type="button" class="secondary save-battery-btn" onclick="saveBatteryFromOffer('o1')">Speicher speichern</button>
                     </div>
                   </div>
                   <div id="o1_storage_status" class="storage-status"></div>
@@ -494,7 +518,7 @@ button:hover{transform:translateY(-1px)}
                   <div id="o2_manual_mode" class="storage-mode-panel" style="display:none;">
                     <small>Hier kannst du einen neuen Speicher manuell pflegen und direkt dauerhaft in Supabase speichern.</small>
                     <div class="actions" style="margin-top:10px;">
-                      <button type="button" class="secondary" onclick="saveBatteryFromOffer('o2')">Speicher speichern</button>
+                      <button type="button" class="secondary save-battery-btn" onclick="saveBatteryFromOffer('o2')">Speicher speichern</button>
                     </div>
                   </div>
                   <div id="o2_storage_status" class="storage-status"></div>
@@ -647,8 +671,8 @@ button:hover{transform:translateY(-1px)}
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://rossmvnscvsflvdlxxad.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ';
+    const SUPABASE_URL = 'HIER_DEINE_SUPABASE_URL_EINTRAGEN';
+    const SUPABASE_KEY = 'HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN';
     const BATTERY_TABLE = 'battery_storage_models';
     const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('HIER_DEINE_SUPABASE_URL_EINTRAGEN') && !SUPABASE_KEY.includes('HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN');
     const supabaseClient = hasSupabaseConfig && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -773,6 +797,104 @@ button:hover{transform:translateY(-1px)}
       if (e2y) e2y.value = o2CyclesYear.toFixed(2);
     }
 
+
+    let currentUser = null;
+
+    function setAuthStatus(message = '', type = '') {
+      const el = document.getElementById('auth_status');
+      if (!el) return;
+      el.textContent = message;
+      el.style.color = type === 'error' ? 'var(--bad)' : type === 'success' ? 'var(--good)' : 'var(--muted)';
+    }
+
+    function updateSaveButtonsState() {
+      document.querySelectorAll('.save-battery-btn').forEach(button => {
+        button.disabled = !currentUser;
+        button.style.opacity = currentUser ? '1' : '0.6';
+        button.style.cursor = currentUser ? 'pointer' : 'not-allowed';
+        button.title = currentUser ? '' : 'Nur nach Login möglich';
+      });
+    }
+
+    function updateAuthUI(user) {
+      currentUser = user || null;
+      const loggedOut = document.getElementById('auth_logged_out');
+      const loggedIn = document.getElementById('auth_logged_in');
+      const emailEl = document.getElementById('auth_user_email');
+
+      if (loggedOut) loggedOut.style.display = currentUser ? 'none' : 'block';
+      if (loggedIn) loggedIn.style.display = currentUser ? 'block' : 'none';
+      if (emailEl) emailEl.textContent = currentUser?.email || '-';
+
+      updateSaveButtonsState();
+    }
+
+    async function sendMagicLink() {
+      if (!supabaseClient) {
+        setAuthStatus('Supabase ist nicht korrekt konfiguriert.', 'error');
+        return;
+      }
+
+      const email = txt('auth_email').trim();
+      if (!email) {
+        setAuthStatus('Bitte eine E-Mail-Adresse eingeben.', 'error');
+        return;
+      }
+
+      const redirectTo = window.location.origin + window.location.pathname;
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: redirectTo
+        }
+      });
+
+      if (error) {
+        console.error('Fehler beim Senden des Magic Links:', error);
+        setAuthStatus('Login-Link konnte nicht gesendet werden: ' + error.message, 'error');
+        return;
+      }
+
+      setAuthStatus('Login-Link wurde an ' + email + ' gesendet.', 'success');
+    }
+
+    async function logoutUser() {
+      if (!supabaseClient) return;
+
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        console.error('Fehler beim Abmelden:', error);
+        setAuthStatus('Abmelden fehlgeschlagen: ' + error.message, 'error');
+        return;
+      }
+
+      updateAuthUI(null);
+      setAuthStatus('Erfolgreich abgemeldet.', 'success');
+    }
+
+    async function initAuth() {
+      if (!supabaseClient) {
+        updateAuthUI(null);
+        return;
+      }
+
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) {
+        console.error('Fehler beim Prüfen der Session:', error);
+        updateAuthUI(null);
+        setAuthStatus('Session konnte nicht geprüft werden.', 'error');
+        return;
+      }
+
+      updateAuthUI(data?.session?.user ?? null);
+
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+        updateAuthUI(session?.user ?? null);
+        if (event === 'SIGNED_IN') setAuthStatus('Erfolgreich eingeloggt.', 'success');
+        if (event === 'SIGNED_OUT') setAuthStatus('Abgemeldet.', 'success');
+      });
+    }
 
     function setStorageStatus(prefix, message = '', type = '') {
       const el = document.getElementById(`${prefix}_storage_status`);
@@ -899,6 +1021,13 @@ button:hover{transform:translateY(-1px)}
     }
 
     async function saveBatteryFromOffer(prefix) {
+      if (!currentUser) {
+        const msg = 'Du musst eingeloggt sein, um einen Speicher dauerhaft zu speichern.';
+        setStorageStatus(prefix, msg, 'error');
+        alert(msg);
+        return;
+      }
+
       if (!supabaseClient) {
         setStorageStatus(prefix, 'Supabase ist nicht konfiguriert. Speichern ist daher nicht möglich.', 'error');
         return;
@@ -935,8 +1064,11 @@ button:hover{transform:translateY(-1px)}
 
       if (error) {
         console.error('Fehler beim Speichern des Speichers:', error);
-        setStorageStatus(prefix, 'Speicher konnte nicht gespeichert werden.', 'error');
-        alert('Speicher konnte nicht gespeichert werden. Prüfe RLS, Insert-Policy und Tabellenspalten.');
+        const message = error.code === '23505'
+          ? 'Dieser Speicher existiert bereits in der Datenbank (Hersteller + Modell).'
+          : 'Speicher konnte nicht gespeichert werden: ' + error.message;
+        setStorageStatus(prefix, message, 'error');
+        alert(message);
         return;
       }
 
@@ -1324,13 +1456,19 @@ button:hover{transform:translateY(-1px)}
       document.getElementById('footerNote').innerHTML = `Verwendete Strompreise: Es wird durchgängig mit dem jeweiligen Strompreis des jeweiligen Angebots gerechnet. Autarkiegrad ist aktuell nur Eingangsgröße ohne direkte Kostenwirkung, um Doppelzählungen zu vermeiden. Ladezyklen pro Tag und Jahr werden als Näherungswert automatisch aus Verbrauch, PV-Produktion, Autarkiegrad, Direktverbrauchsquote ohne Speicher und Speicherkapazität berechnet. Wenn kein Autarkiegrad eingetragen ist, verwendet das Tool ersatzweise eine konservative Grundschätzung aus PV-Überschuss und verschiebbarem Verbrauch, damit auch ohne gesetzte Häkchen eine Basisschätzung entsteht. Dynamischer Stromtarif, Direktvermarktung und Arbitrage erhöhen diesen Näherungswert zusätzlich, weil dadurch typischerweise mehr Speicherbewegung und Netzladung entsteht. Diese Profilaufschläge werden je Angebot separat berücksichtigt. <br><br>Garantie-Logik: Wenn eine <strong>garantierte Energiedurchsatzmenge</strong> größer als 0 hinterlegt ist, wird das Garantieende aus <strong>garantierten Vollzyklen</strong> und <strong>Energiedurchsatzmenge</strong> berechnet. Der frühere Zeitpunkt gewinnt. Ist keine Energiedurchsatzmenge hinterlegt oder steht dort 0, wird das Garantieende nur über die Vollzyklen berechnet. Läuft die Garantie eines Angebots innerhalb des Betrachtungszeitraums ab, wird für dieses Angebot ein Speicheraustausch angesetzt.`;
     }
 
-    bindBatterySelectors();
-    setStorageMode('o1', 'select');
-    setStorageMode('o2', 'select');
-    applyZeroDefaults();
-    syncCalculatedFields();
-    calculate();
-    loadBatteryCatalog();
+    async function initApp() {
+      bindBatterySelectors();
+      setStorageMode('o1', 'select');
+      setStorageMode('o2', 'select');
+      applyZeroDefaults();
+      updateSaveButtonsState();
+      await initAuth();
+      syncCalculatedFields();
+      calculate();
+      await loadBatteryCatalog();
+    }
+
+    document.addEventListener('DOMContentLoaded', initApp);
   </script>
 </body>
 </html>
