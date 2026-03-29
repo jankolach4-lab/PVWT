@@ -719,8 +719,8 @@ button:hover{transform:translateY(-1px)}
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'HIER_DEINE_SUPABASE_URL_EINTRAGEN';
-    const SUPABASE_KEY = 'HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN';
+    const SUPABASE_URL = 'https://rossmvnscvsflvdlxxad.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_XIEpQQjVqyOSUfynss3f5w_tgf4GoMZ';
     const BATTERY_TABLE = 'battery_storage_models';
     const hasSupabaseConfig = SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('HIER_DEINE_SUPABASE_URL_EINTRAGEN') && !SUPABASE_KEY.includes('HIER_DEIN_SUPABASE_PUBLISHABLE_KEY_EINTRAGEN');
     const supabaseClient = hasSupabaseConfig && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
