@@ -540,11 +540,11 @@ button:hover{transform:translateY(-1px)}
                     </select>
                   </div>
                   <div id="o1_manual_mode" class="storage-mode-panel" style="display:none;">
-                    <small>Hier kannst du neue Speicher anlegen oder einen bereits ausgewählten Speicher sauber aktualisieren bzw. deaktivieren.</small>
-                    <div class="actions" style="margin-top:10px;flex-wrap:wrap;">
-                      <button type="button" class="secondary save-battery-btn" onclick="saveBatteryFromOffer('o1')">Neuen Speicher speichern</button>
-                      <button type="button" class="secondary save-battery-btn" onclick="updateBatteryFromOffer('o1')">Ausgewählten Speicher aktualisieren</button>
-                      <button type="button" class="secondary save-battery-btn" onclick="deactivateBatteryFromOffer('o1')">Ausgewählten Speicher deaktivieren</button>
+                    <small>Hier kannst du neue Speicher anlegen oder einen zuvor ausgewählten Speicher gezielt bearbeiten bzw. deaktivieren.</small>
+                    <div class="actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                      <button type="button" class="secondary auth-required-btn" onclick="saveBatteryFromOffer('o1')">Neuen Speicher speichern</button>
+                      <button type="button" class="secondary auth-required-btn" onclick="updateBatteryFromOffer('o1')">Ausgewählten Speicher aktualisieren</button>
+                      <button type="button" class="secondary auth-required-btn" onclick="deactivateBatteryFromOffer('o1')">Ausgewählten Speicher deaktivieren</button>
                     </div>
                   </div>
                   <div id="o1_storage_status" class="storage-status"></div>
@@ -566,11 +566,11 @@ button:hover{transform:translateY(-1px)}
                     </select>
                   </div>
                   <div id="o2_manual_mode" class="storage-mode-panel" style="display:none;">
-                    <small>Hier kannst du neue Speicher anlegen oder einen bereits ausgewählten Speicher sauber aktualisieren bzw. deaktivieren.</small>
-                    <div class="actions" style="margin-top:10px;flex-wrap:wrap;">
-                      <button type="button" class="secondary save-battery-btn" onclick="saveBatteryFromOffer('o2')">Neuen Speicher speichern</button>
-                      <button type="button" class="secondary save-battery-btn" onclick="updateBatteryFromOffer('o2')">Ausgewählten Speicher aktualisieren</button>
-                      <button type="button" class="secondary save-battery-btn" onclick="deactivateBatteryFromOffer('o2')">Ausgewählten Speicher deaktivieren</button>
+                    <small>Hier kannst du neue Speicher anlegen oder einen zuvor ausgewählten Speicher gezielt bearbeiten bzw. deaktivieren.</small>
+                    <div class="actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                      <button type="button" class="secondary auth-required-btn" onclick="saveBatteryFromOffer('o2')">Neuen Speicher speichern</button>
+                      <button type="button" class="secondary auth-required-btn" onclick="updateBatteryFromOffer('o2')">Ausgewählten Speicher aktualisieren</button>
+                      <button type="button" class="secondary auth-required-btn" onclick="deactivateBatteryFromOffer('o2')">Ausgewählten Speicher deaktivieren</button>
                     </div>
                   </div>
                   <div id="o2_storage_status" class="storage-status"></div>
@@ -787,25 +787,25 @@ button:hover{transform:translateY(-1px)}
       return new Intl.NumberFormat('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v || 0);
     }
 
-    function calculateEnergyFlows(consumption, pv, autarkyPercent, directUsePercent, battCap, hasDynamicTariff, hasDirectMarketing, hasArbitrage) {
+    function estimateCyclesPerYear(consumption, pv, autarkyPercent, directUsePercent, battCap, hasDynamicTariff, hasDirectMarketing, hasArbitrage) {
+      if (battCap <= 0) return 0;
+
       const autarky = clamp(autarkyPercent, 0, 100) / 100;
       const directUse = (directUsePercent > 0 ? clamp(directUsePercent, 0, 100) : 25) / 100;
-      const directConsumption = Math.min(Math.max(0, pv * directUse), Math.max(0, consumption), Math.max(0, pv));
+      const directConsumption = pv * directUse;
       const pvSurplus = Math.max(0, pv - directConsumption);
 
-      let batteryEnergyFromPv = 0;
-      if (battCap > 0) {
-        if (autarkyPercent > 0) {
-          const selfSupplied = consumption * autarky;
-          batteryEnergyFromPv = Math.max(0, selfSupplied - directConsumption);
-        } else {
-          const shiftableLoad = consumption * 0.35;
-          batteryEnergyFromPv = Math.min(pvSurplus, shiftableLoad);
-        }
-        batteryEnergyFromPv = Math.min(batteryEnergyFromPv, pvSurplus);
+      let batteryEnergy = 0;
+
+      if (autarkyPercent > 0) {
+        const selfSupplied = consumption * autarky;
+        batteryEnergy = Math.max(0, selfSupplied - directConsumption);
+      } else {
+        const shiftableLoad = consumption * 0.35;
+        batteryEnergy = Math.min(pvSurplus, shiftableLoad);
       }
 
-      let annualCycles = battCap > 0 ? batteryEnergyFromPv / battCap : 0;
+      let annualCycles = batteryEnergy / battCap;
 
       let extraCyclesPerDay = 0;
       if (hasDynamicTariff) extraCyclesPerDay += 0.10;
@@ -813,25 +813,8 @@ button:hover{transform:translateY(-1px)}
       if (hasArbitrage) extraCyclesPerDay += 0.30;
 
       annualCycles += extraCyclesPerDay * 365;
-      annualCycles = Math.min(550, annualCycles);
-
-      const batteryChargeEnergy = Math.min(pvSurplus, battCap > 0 ? annualCycles * battCap : 0);
-      const feedinEnergy = Math.max(0, pv - directConsumption - batteryChargeEnergy);
-
-      return {
-        directConsumption,
-        pvSurplus,
-        batteryEnergyFromPv,
-        batteryChargeEnergy,
-        annualCycles,
-        feedinEnergy
-      };
+      return Math.min(550, annualCycles);
     }
-
-    function estimateCyclesPerYear(consumption, pv, autarkyPercent, directUsePercent, battCap, hasDynamicTariff, hasDirectMarketing, hasArbitrage) {
-      return calculateEnergyFlows(consumption, pv, autarkyPercent, directUsePercent, battCap, hasDynamicTariff, hasDirectMarketing, hasArbitrage).annualCycles;
-    }
-
 
     function syncCalculatedFields() {
       const consumption = num('consumption');
@@ -877,7 +860,7 @@ button:hover{transform:translateY(-1px)}
     }
 
     function updateSaveButtonsState() {
-      document.querySelectorAll('.save-battery-btn').forEach(button => {
+      document.querySelectorAll('.auth-required-btn').forEach(button => {
         button.disabled = !currentUser;
         button.style.opacity = currentUser ? '1' : '0.6';
         button.style.cursor = currentUser ? 'pointer' : 'not-allowed';
@@ -1007,16 +990,6 @@ button:hover{transform:translateY(-1px)}
       setStorageStatus(prefix, mode === 'manual' ? 'Manuelle Eingabe aktiv.' : '', '');
     }
 
-    function getSelectedBatteryId(prefix) {
-      const select = document.getElementById(`${prefix}_storage_select`);
-      return select?.value || '';
-    }
-
-    function clearSelectedBattery(prefix) {
-      const select = document.getElementById(`${prefix}_storage_select`);
-      if (select) select.value = '';
-    }
-
     function fillBatteryDropdown(prefix) {
       const select = document.getElementById(`${prefix}_storage_select`);
       if (!select) return;
@@ -1119,6 +1092,17 @@ button:hover{transform:translateY(-1px)}
       };
     }
 
+    function getSelectedBatteryId(prefix) {
+      const select = document.getElementById(`${prefix}_storage_select`);
+      return select ? String(select.value || '').trim() : '';
+    }
+
+    function getSelectedBattery(prefix) {
+      const id = getSelectedBatteryId(prefix);
+      if (!id) return null;
+      return batteryCatalog.find(item => String(item.id) === id) || null;
+    }
+
     function validateBatteryPayload(payload) {
       const errors = [];
       if (!payload.manufacturer) errors.push('Hersteller ist ein Pflichtfeld.');
@@ -1153,14 +1137,11 @@ button:hover{transform:translateY(-1px)}
 
       if (errors.length) {
         setStorageStatus(prefix, errors.join(' '), 'error');
-        alert(errors.join('
-'));
+        alert(errors.join('\n'));
         return;
       }
 
-      const selectedId = getSelectedBatteryId(prefix);
       const duplicate = batteryCatalog.find(item =>
-        item.id !== selectedId &&
         String(item.manufacturer || '').trim().toLowerCase() === payload.manufacturer.toLowerCase() &&
         String(item.model || '').trim().toLowerCase() === payload.model.toLowerCase()
       );
@@ -1203,9 +1184,10 @@ button:hover{transform:translateY(-1px)}
       alert('Speicher wurde erfolgreich gespeichert.');
     }
 
+
     async function updateBatteryFromOffer(prefix) {
       if (!currentUser) {
-        const msg = 'Du musst eingeloggt sein, um einen Speicher zu aktualisieren.';
+        const msg = 'Du musst eingeloggt sein, um einen Speicher zu bearbeiten.';
         setStorageStatus(prefix, msg, 'error');
         alert(msg);
         return;
@@ -1216,9 +1198,9 @@ button:hover{transform:translateY(-1px)}
         return;
       }
 
-      const selectedId = getSelectedBatteryId(prefix);
-      if (!selectedId) {
-        const msg = 'Bitte zuerst im Dropdown einen vorhandenen Speicher auswählen, den du aktualisieren möchtest.';
+      const selected = getSelectedBattery(prefix);
+      if (!selected) {
+        const msg = 'Bitte zuerst im Dropdown einen vorhandenen Speicher auswählen.';
         setStorageStatus(prefix, msg, 'error');
         alert(msg);
         return;
@@ -1228,16 +1210,16 @@ button:hover{transform:translateY(-1px)}
       const errors = validateBatteryPayload(payload);
       if (errors.length) {
         setStorageStatus(prefix, errors.join(' '), 'error');
-        alert(errors.join('
-'));
+        alert(errors.join('\n'));
         return;
       }
 
       const duplicate = batteryCatalog.find(item =>
-        item.id !== selectedId &&
+        String(item.id) !== String(selected.id) &&
         String(item.manufacturer || '').trim().toLowerCase() === payload.manufacturer.toLowerCase() &&
         String(item.model || '').trim().toLowerCase() === payload.model.toLowerCase()
       );
+
       if (duplicate) {
         const msg = 'Hersteller + Modell existieren bereits bei einem anderen Speicher.';
         setStorageStatus(prefix, msg, 'error');
@@ -1250,14 +1232,14 @@ button:hover{transform:translateY(-1px)}
       const { data, error } = await supabaseClient
         .from(BATTERY_TABLE)
         .update(payload)
-        .eq('id', selectedId)
+        .eq('id', selected.id)
         .select()
         .single();
 
       if (error) {
         console.error('Fehler beim Aktualisieren des Speichers:', error);
         const message = error.code === '23505'
-          ? 'Hersteller + Modell existieren bereits bei einem anderen Speicher.'
+          ? 'Dieser Speicher existiert bereits in der Datenbank (Hersteller + Modell).'
           : 'Speicher konnte nicht aktualisiert werden: ' + error.message;
         setStorageStatus(prefix, message, 'error');
         alert(message);
@@ -1272,7 +1254,7 @@ button:hover{transform:translateY(-1px)}
         applyBatteryToOffer(prefix, data.id);
       }
 
-      setStorageMode(prefix, 'select');
+      setStorageMode(prefix, 'manual');
       setStorageStatus(prefix, `Speicher aktualisiert: ${payload.manufacturer} ${payload.model}`, 'success');
       alert('Speicher wurde erfolgreich aktualisiert.');
     }
@@ -1290,27 +1272,23 @@ button:hover{transform:translateY(-1px)}
         return;
       }
 
-      const selectedId = getSelectedBatteryId(prefix);
-      if (!selectedId) {
-        const msg = 'Bitte zuerst im Dropdown einen vorhandenen Speicher auswählen, den du deaktivieren möchtest.';
+      const selected = getSelectedBattery(prefix);
+      if (!selected) {
+        const msg = 'Bitte zuerst im Dropdown einen vorhandenen Speicher auswählen.';
         setStorageStatus(prefix, msg, 'error');
         alert(msg);
         return;
       }
 
-      const selectedBattery = batteryCatalog.find(item => item.id === selectedId);
-      const label = selectedBattery ? `${selectedBattery.manufacturer} ${selectedBattery.model}` : 'diesen Speicher';
-
-      if (!confirm(`Soll ${label} wirklich deaktiviert werden?`)) {
-        return;
-      }
+      const confirmed = window.confirm(`Soll der Speicher "${selected.manufacturer} ${selected.model}" wirklich deaktiviert werden?`);
+      if (!confirmed) return;
 
       setStorageStatus(prefix, 'Speicher wird deaktiviert ...', '');
 
       const { error } = await supabaseClient
         .from(BATTERY_TABLE)
         .update({ is_active: false })
-        .eq('id', selectedId);
+        .eq('id', selected.id);
 
       if (error) {
         console.error('Fehler beim Deaktivieren des Speichers:', error);
@@ -1320,11 +1298,12 @@ button:hover{transform:translateY(-1px)}
         return;
       }
 
-      clearSelectedBattery(prefix);
       await loadBatteryCatalog();
-      clearSelectedBattery(prefix);
-      setStorageMode(prefix, 'manual');
-      setStorageStatus(prefix, `Speicher deaktiviert: ${label}`, 'success');
+
+      const select = document.getElementById(`${prefix}_storage_select`);
+      if (select) select.value = '';
+      setStorageMode(prefix, 'select');
+      setStorageStatus(prefix, `Speicher deaktiviert: ${selected.manufacturer} ${selected.model}`, 'success');
       alert('Speicher wurde deaktiviert und aus der aktiven Liste entfernt.');
     }
 
@@ -1592,8 +1571,8 @@ button:hover{transform:translateY(-1px)}
       const escalationRate = num('priceEscalation') / 100;
       const feedinPrice = num('feedin_price');
 
-      const o1 = { name: txt('o1_name'), purchase: num('o1_purchase'), price: num('o1_price'), pv: num('o1_pv'), pvDeg30: num('o1_pv_deg30'), battCap: num('o1_batt_cap'), battPrice: num('o1_batt_price'), disposal: num('o1_disposal'), guaranteeCycles: num('o1_guarantee_cycles'), throughput: num('o1_throughput'), cyclesYear: num('o1_cycles_year'), cap10: num('o1_cap10'), chargePower: num('o1_charge_power'), invReplaceCost: num('o1_inv_replace_cost'), invReplaceYear: num('o1_inv_replace_year'), autarky: num('o1_autarky'), directUse: num('o1_direct_use'), hasDynamicTariff: checked('o1_has_dynamic_tariff'), hasDirectMarketing: checked('o1_has_direct_marketing'), hasArbitrage: checked('o1_has_arbitrage'), finRate: num('o1_fin_rate'), finYears: num('o1_fin_years') };
-      const o2 = { name: txt('o2_name'), purchase: num('o2_purchase'), price: num('o2_price'), pv: num('o2_pv'), pvDeg30: num('o2_pv_deg30'), battCap: num('o2_batt_cap'), battPrice: num('o2_batt_price'), disposal: num('o2_disposal'), guaranteeCycles: num('o2_guarantee_cycles'), throughput: num('o2_throughput'), cyclesYear: num('o2_cycles_year'), cap10: num('o2_cap10'), chargePower: num('o2_charge_power'), invReplaceCost: num('o2_inv_replace_cost'), invReplaceYear: num('o2_inv_replace_year'), autarky: num('o2_autarky'), directUse: num('o2_direct_use'), hasDynamicTariff: checked('o2_has_dynamic_tariff'), hasDirectMarketing: checked('o2_has_direct_marketing'), hasArbitrage: checked('o2_has_arbitrage'), finRate: num('o2_fin_rate'), finYears: num('o2_fin_years') };
+      const o1 = { name: txt('o1_name'), purchase: num('o1_purchase'), price: num('o1_price'), pv: num('o1_pv'), pvDeg30: num('o1_pv_deg30'), battCap: num('o1_batt_cap'), battPrice: num('o1_batt_price'), disposal: num('o1_disposal'), guaranteeCycles: num('o1_guarantee_cycles'), throughput: num('o1_throughput'), cyclesYear: num('o1_cycles_year'), cap10: num('o1_cap10'), chargePower: num('o1_charge_power'), invReplaceCost: num('o1_inv_replace_cost'), invReplaceYear: num('o1_inv_replace_year'), autarky: num('o1_autarky'), finRate: num('o1_fin_rate'), finYears: num('o1_fin_years') };
+      const o2 = { name: txt('o2_name'), purchase: num('o2_purchase'), price: num('o2_price'), pv: num('o2_pv'), pvDeg30: num('o2_pv_deg30'), battCap: num('o2_batt_cap'), battPrice: num('o2_batt_price'), disposal: num('o2_disposal'), guaranteeCycles: num('o2_guarantee_cycles'), throughput: num('o2_throughput'), cyclesYear: num('o2_cycles_year'), cap10: num('o2_cap10'), chargePower: num('o2_charge_power'), invReplaceCost: num('o2_inv_replace_cost'), invReplaceYear: num('o2_inv_replace_year'), autarky: num('o2_autarky'), finRate: num('o2_fin_rate'), finYears: num('o2_fin_years') };
 
       const pvDiff = Math.abs(o1.pv - o2.pv);
       const pvPenalty1 = o1.pv < o2.pv ? pvDiff * years * o1.price : 0;
@@ -1628,10 +1607,14 @@ button:hover{transform:translateY(-1px)}
       const powerDiff = Math.abs(o1.chargePower - o2.chargePower);
       const powerPenalty1 = o1.chargePower < o2.chargePower ? powerDiff * 365 * years * o1.price : 0;
       const powerPenalty2 = o2.chargePower < o1.chargePower ? powerDiff * 365 * years * o2.price : 0;
-      const energyFlow1 = calculateEnergyFlows(consumption, o1.pv, o1.autarky, o1.directUse, o1.battCap, o1.hasDynamicTariff, o1.hasDirectMarketing, o1.hasArbitrage);
-      const energyFlow2 = calculateEnergyFlows(consumption, o2.pv, o2.autarky, o2.directUse, o2.battCap, o2.hasDynamicTariff, o2.hasDirectMarketing, o2.hasArbitrage);
-      const feedin1 = energyFlow1.feedinEnergy;
-      const feedin2 = energyFlow2.feedinEnergy;
+      const selfUse1 = consumption * (clamp(o1.autarky, 0, 100) / 100);
+      const selfUse2 = consumption * (clamp(o2.autarky, 0, 100) / 100);
+      const pvSurplus1 = Math.max(0, o1.pv - selfUse1);
+      const pvSurplus2 = Math.max(0, o2.pv - selfUse2);
+      const estimatedBatteryChargeFromPv1 = Math.min(pvSurplus1, Math.max(0, o1.battCap * o1.cyclesYear));
+      const estimatedBatteryChargeFromPv2 = Math.min(pvSurplus2, Math.max(0, o2.battCap * o2.cyclesYear));
+      const feedin1 = Math.max(0, pvSurplus1 - estimatedBatteryChargeFromPv1);
+      const feedin2 = Math.max(0, pvSurplus2 - estimatedBatteryChargeFromPv2);
       const feedinRevenue1 = feedin1 * years * feedinPrice;
       const feedinRevenue2 = feedin2 * years * feedinPrice;
       const total1 = o1.purchase + replacementCost1 + inverterCost1 + financingCost1 - feedinRevenue1 + escalateAnnualCost(pvPenalty1 / years, years, escalationRate) + escalateAnnualCost(battPenalty1 / years, years, escalationRate) + escalateAnnualCost(powerPenalty1 / years, years, escalationRate) + battDegSeries1.reduce((sum, val, idx) => sum + val * Math.pow(1 + escalationRate, idx), 0) + pvDeg1.annual.reduce((sum, val, idx) => sum + val * Math.pow(1 + escalationRate, idx), 0);
@@ -1691,12 +1674,12 @@ button:hover{transform:translateY(-1px)}
       details.push(row('Speicher-Degradation', money(deg1AdjustedTotal), money(deg2AdjustedTotal), `Kapazitätsverlust des Speichers über ${fmt(years,0)} Jahre berücksichtigt; bei angesetztem Speicheraustausch wird die Degradation danach neu gestartet`));
       details.push(row('Wechselrichter-Ersatzkosten', money(inverterCost1), money(inverterCost2), `Wird angesetzt, wenn der Austauschzeitpunkt innerhalb von ${fmt(years,0)} Jahren liegt`));
       details.push(row('Kosten Leistungsdifferenz', money(powerPenalty1), money(powerPenalty2), `Differenz: ${fmt(powerDiff)} kW, angesetzt mit festem Faktor 1x pro Tag (365)`));
-      details.push(row('Einspeiseerlöse', money(-feedinRevenue1), money(-feedinRevenue2), `Vergütet wird nur der PV-Überschuss nach Direktverbrauch und geschätzter Speicherbeladung: ${fmt(feedin1)} / ${fmt(feedin2)} kWh pro Jahr bei ${money(feedinPrice)}/kWh`));
+      details.push(row('Einspeiseerlöse', money(-feedinRevenue1), money(-feedinRevenue2), `Überschussproduktion: ${fmt(feedin1)} / ${fmt(feedin2)} kWh pro Jahr bei ${money(feedinPrice)}/kWh`));
       details.push(row('Finanzierungskosten', money(financingCost1), money(financingCost2), `Zinskosten auf die Kaufsumme bei ${fmt(o1.finRate)}% / ${fmt(o2.finRate)}% Effektivzins und ${fmt(o1.finYears,0)} / ${fmt(o2.finYears,0)} Jahren Laufzeit`));
       details.push(row('Gesamtpreis 20 Jahre', `<strong>${money(total1)}</strong>`, `<strong>${money(total2)}</strong>`, `Summe aller Bausteine mit angenommener Strompreissteigerung von ${fmt(escalationRate * 100)} % pro Jahr`));
       document.getElementById('detailTable').innerHTML = details.join('');
       renderBreakEvenChart(yearlySeries1, yearlySeries2, o1.name, o2.name);
-      document.getElementById('footerNote').innerHTML = `Verwendete Strompreise: Es wird durchgängig mit dem jeweiligen Strompreis des jeweiligen Angebots gerechnet. Die Einspeiseerlöse werden nicht mehr auf die gesamte Jahresproduktion gerechnet, sondern nur auf den nach Direktverbrauch und geschätzter Speicherbeladung verbleibenden PV-Überschuss. Autarkiegrad ist aktuell nur Eingangsgröße ohne direkte Kostenwirkung, um Doppelzählungen zu vermeiden. Ladezyklen pro Tag und Jahr werden als Näherungswert automatisch aus Verbrauch, PV-Produktion, Autarkiegrad, Direktverbrauchsquote ohne Speicher und Speicherkapazität berechnet. Wenn kein Autarkiegrad eingetragen ist, verwendet das Tool ersatzweise eine konservative Grundschätzung aus PV-Überschuss und verschiebbarem Verbrauch, damit auch ohne gesetzte Häkchen eine Basisschätzung entsteht. Dynamischer Stromtarif, Direktvermarktung und Arbitrage erhöhen diesen Näherungswert zusätzlich, weil dadurch typischerweise mehr Speicherbewegung und Netzladung entsteht. Diese Profilaufschläge werden je Angebot separat berücksichtigt. <br><br>Garantie-Logik: Wenn eine <strong>garantierte Energiedurchsatzmenge</strong> größer als 0 hinterlegt ist, wird das Garantieende aus <strong>garantierten Vollzyklen</strong> und <strong>Energiedurchsatzmenge</strong> berechnet. Der frühere Zeitpunkt gewinnt. Ist keine Energiedurchsatzmenge hinterlegt oder steht dort 0, wird das Garantieende nur über die Vollzyklen berechnet. Läuft die Garantie eines Angebots innerhalb des Betrachtungszeitraums ab, wird für dieses Angebot ein Speicheraustausch angesetzt.`;
+      document.getElementById('footerNote').innerHTML = `Verwendete Strompreise: Es wird durchgängig mit dem jeweiligen Strompreis des jeweiligen Angebots gerechnet. Autarkiegrad ist aktuell nur Eingangsgröße ohne direkte Kostenwirkung, um Doppelzählungen zu vermeiden. Ladezyklen pro Tag und Jahr werden als Näherungswert automatisch aus Verbrauch, PV-Produktion, Autarkiegrad, Direktverbrauchsquote ohne Speicher und Speicherkapazität berechnet. Wenn kein Autarkiegrad eingetragen ist, verwendet das Tool ersatzweise eine konservative Grundschätzung aus PV-Überschuss und verschiebbarem Verbrauch, damit auch ohne gesetzte Häkchen eine Basisschätzung entsteht. Dynamischer Stromtarif, Direktvermarktung und Arbitrage erhöhen diesen Näherungswert zusätzlich, weil dadurch typischerweise mehr Speicherbewegung und Netzladung entsteht. Diese Profilaufschläge werden je Angebot separat berücksichtigt. <br><br>Garantie-Logik: Wenn eine <strong>garantierte Energiedurchsatzmenge</strong> größer als 0 hinterlegt ist, wird das Garantieende aus <strong>garantierten Vollzyklen</strong> und <strong>Energiedurchsatzmenge</strong> berechnet. Der frühere Zeitpunkt gewinnt. Ist keine Energiedurchsatzmenge hinterlegt oder steht dort 0, wird das Garantieende nur über die Vollzyklen berechnet. Läuft die Garantie eines Angebots innerhalb des Betrachtungszeitraums ab, wird für dieses Angebot ein Speicheraustausch angesetzt.`;
     }
 
     async function initApp() {
